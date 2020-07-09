@@ -102,15 +102,24 @@ def user_login(user):
 
 
 def org_repositories(rstate):
-    return rstate['data']['organization']['repositories']['edges']
+    try:
+        return rstate['data']['organization']['repositories']['edges']
+    except KeyError:
+        return []
 
 
 def org_teams(rstate):
-    return rstate['data']['organization']['teams']['edges']
+    try:
+        return rstate['data']['organization']['teams']['edges']
+    except KeyError:
+        return []
 
 
 def org_members(rstate):
-    return rstate['data']['organization']['membersWithRole']['edges']
+    try:
+        return rstate['data']['organization']['membersWithRole']['edges']
+    except KeyError:
+        return []
 
 
 def empty():

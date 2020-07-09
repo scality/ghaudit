@@ -7,7 +7,14 @@ import functools
 
 import requests
 import jinja2
-from . import schema
+from ghaudit import schema
+from ghaudit.query.compound_query import CompoundQuery2
+from ghaudit.query.org_teams import OrgTeamsQuery
+from ghaudit.query.org_members import OrgMembersQuery
+from ghaudit.query.org_repositories import OrgRepoQuery
+from ghaudit.query.team_permission import TeamRepoQuery
+from ghaudit.query.user_role import TeamMemberQuery
+from ghaudit.query.repo_collaborators import RepoCollaboratorQuery
 
 
 GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql'
@@ -20,7 +27,7 @@ def file_path():
         if environ.get('HOME'):
             return Path(environ.get('HOME')) / '.local' / 'share'
         return Path('/')
-    return parent_dir() / 'ghaudit' / 'compliance' / 'cache.json'
+    return parent_dir() / 'ghaudit' / 'compliance' / 'cache2.json'
 
 
 def graphql_query_file_path():
@@ -35,6 +42,41 @@ def load():
 def store(data):
     with open(file_path(), mode='w') as cache_file:
         return json.dump(data, cache_file)
+
+
+def org_team_gen():
+    frag_fields = """
+fragment teamFields on Team {
+  id
+  name
+  privacy
+}
+"""
+    main_frag = """
+fragment teams on Query {
+  root: organization(login: $organisation) {
+    teams(first: $teamsMax{% if page_infos %}, after: teamsCursor{% endif %}) {
+      pageInfo {
+        ...pageInfoFields
+      }
+      edges {
+        node {
+          ...teamFields
+        }
+      }
+    }
+  }
+}
+"""
+    return {
+        'fragments': [
+            {
+                'name': 'placeholder',
+                'value': 'placeholder'
+            },
+        ],
+        'args': ['organisation', 'teamsCursor']
+    }
 
 
 def graphql_github_fragment_pageInfo_fields():
@@ -340,35 +382,10 @@ def node_query_generator():
     }
 
 
-# pseudo code for a more generic method:
-# def paginate(config, auth_driver, result = None):
-#     query = ''             # the query string
-#     fragments = []         # list of fragment names to call from the query
-#     args = []              # list of args to declare in the query
-#     params = []            # parameters passed in json along the query
-#     params['organisation'] = config['organisation']['name']
-#     nodes = {}
-#     data = schema.empty()
-#     # register nodes for 'repositories', 'teams', and 'membersWithRole'
-#     while funcools.reduce(lambda x, y: x or page_info_continue(y), [page_info_get(x) in nodes], False):
-#         # step 1 render query
-#         for node in nodes:
-#             name = node['name']
-#             page_info = page_info_get(name, result)
-#             if page_info_continue(page_info):
-#                 query += node['render'](page_info_args(name))
-#                 fragments.append(node['fragment_name']())
-#                 args += page_info_args(name)
-#                 params += page_info_params(name)
-#                 render_main_query(fragments, args) # combine all fragments in one query
-#         # step 2 send query
-#         result = github_graphql_call(query, auth_driver, params)
-#         # step 3 process result
-#         # check for 'errors' in result
-#         new_nodes = node['process_result'](result)
-#         for elem in result['data'].values():
-#             data = schema.merge(data, {'data': {'organisation': result}})
-#     store(data)
+def node_query_generator_teams():
+    def gen_new_nodes():
+        pass
+    pass
 
 
 def gather_org_infos(config, auth_driver):
@@ -435,7 +452,8 @@ def refresh(config, auth_driver):
     ofilepath = file_path()
     if not path.exists(ofilepath.parent):
         makedirs(ofilepath.parent)
-    gather_org_infos(config, auth_driver)
+    # gather_org_infos(config, auth_driver)
+    main_loop3(config, auth_driver)
     # in organisation: gather all repositories, all members, all teams
     # in each repositories: gather all collaborators
     # in each teams: gather all members and repositories access
@@ -459,3 +477,75 @@ def github_graphql_call(call_str, auth_driver, variables):
             call_str
         ))
     return result.json()
+
+
+FRAG_PAGEINFO_FIELDS = """
+fragment pageInfoFields on PageInfo {
+  endCursor
+  hasNextPage
+}
+"""
+
+def main_loop3(config, auth_driver):
+    data = schema.empty()
+
+    workaround = {'teamRepo': [], 'teamMember': [], 'collaborators': []}
+    workaround2 = {'team': 0, 'repo': 0}
+    MAX_QUERIES = 40
+    iterations = 0
+    query = CompoundQuery2()
+    query.add_frag(FRAG_PAGEINFO_FIELDS)
+    query.append(OrgTeamsQuery())
+    query.append(OrgMembersQuery())
+    query.append(OrgRepoQuery())
+    while not query.finished():
+        demo_params = {
+            'organisation': config['organisation']['name'],
+            'teamsMax': 40,
+            'membersWithRoleMax': 40,
+            'repositoriesMax': 40,
+        }
+        iterations += 1
+        print(workaround2)
+        result = query.run(auth_driver, demo_params)
+
+        # check for 'errors' in result
+        for item in result['data'].values():
+            data = schema.merge(data, {'data': {'organization': item}})
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}'.format(iterations))
+        print('teams: {}'.format(len(schema.org_teams(data))))
+        print('users: {}'.format(len(schema.org_repositories(data))))
+        print('repositories: {}'.format(len(schema.org_members(data))))
+        print(workaround2)
+        print('{} <<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(iterations))
+
+        for count, team in enumerate(schema.org_teams(data)):
+            name = schema.team_name(team)
+            if query.size() > MAX_QUERIES:
+                break
+            if name not in workaround['teamRepo']:
+                query.append(TeamRepoQuery(name, workaround2['team'], 40))
+                workaround['teamRepo'].append(name)
+                workaround2['team'] += 1
+
+            if query.size() > MAX_QUERIES:
+                break
+            if name not in workaround['teamMember']:
+                query.append(TeamMemberQuery(name, workaround2['team'], 40))
+                workaround['teamMember'].append(name)
+                workaround2['team'] += 1
+
+        for count, repo in enumerate(schema.org_repositories(data)):
+            name = schema.repo_name(repo)
+            if query.size() > MAX_QUERIES:
+                break
+            if name not in workaround['collaborators']:
+                query.append(RepoCollaboratorQuery(name, workaround2['repo'], 40))
+                workaround['collaborators'].append(name)
+                workaround2['repo'] += 1
+        # TODO resolve all users referenced by collaborators
+        # TODO cache validation:
+        # * all repos referenced by teams should be known
+        # * all users referenced by teams should be known
+        # * all users referenced by repos should be known
+    store(data)
