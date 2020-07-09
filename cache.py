@@ -14,9 +14,6 @@ from ghaudit.query.user_role import TeamMemberQuery
 from ghaudit.query.repo_collaborators import RepoCollaboratorQuery
 
 
-GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql'
-
-
 def _file_path():
     def parent_dir():
         if environ.get('XDG_DATA_HOME'):
@@ -77,17 +74,16 @@ def _sync(config, auth_driver):
             'membersWithRoleMax': 40,
             'repositoriesMax': 40,
         }
-        iterations += 1
         result = query.run(auth_driver, demo_params)
 
         for item in result['data'].values():
             data = schema.merge(data, {'data': {'organization': item}})
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}'.format(iterations))
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print(query.stats())
         print('teams: {}'.format(len(schema.org_teams(data))))
         print('users: {}'.format(len(schema.org_repositories(data))))
         print('repositories: {}'.format(len(schema.org_members(data))))
-        print('{} <<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(iterations))
+        print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
 
         for count, team in enumerate(schema.org_teams(data)):
             name = schema.team_name(team)
