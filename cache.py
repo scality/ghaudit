@@ -58,14 +58,16 @@ fragment pageInfoFields on PageInfo {
 }
 """
 
+MAX_PARALLEL_QUERIES = 40
+
+
 def main_loop3(config, auth_driver):
     data = schema.empty()
 
     workaround = {'teamRepo': [], 'teamMember': [], 'collaborators': []}
     workaround2 = {'team': 0, 'repo': 0}
-    MAX_QUERIES = 40
     iterations = 0
-    query = CompoundQuery2()
+    query = CompoundQuery2(MAX_PARALLEL_QUERIES)
     query.add_frag(FRAG_PAGEINFO_FIELDS)
     query.append(OrgTeamsQuery())
     query.append(OrgMembersQuery())
@@ -93,15 +95,11 @@ def main_loop3(config, auth_driver):
 
         for count, team in enumerate(schema.org_teams(data)):
             name = schema.team_name(team)
-            if query.size() > MAX_QUERIES:
-                break
             if name not in workaround['teamRepo']:
                 query.append(TeamRepoQuery(name, workaround2['team'], 40))
                 workaround['teamRepo'].append(name)
                 workaround2['team'] += 1
 
-            if query.size() > MAX_QUERIES:
-                break
             if name not in workaround['teamMember']:
                 query.append(TeamMemberQuery(name, workaround2['team'], 40))
                 workaround['teamMember'].append(name)
@@ -109,8 +107,6 @@ def main_loop3(config, auth_driver):
 
         for count, repo in enumerate(schema.org_repositories(data)):
             name = schema.repo_name(repo)
-            if query.size() > MAX_QUERIES:
-                break
             if name not in workaround['collaborators']:
                 query.append(RepoCollaboratorQuery(name, workaround2['repo'], 40))
                 workaround['collaborators'].append(name)

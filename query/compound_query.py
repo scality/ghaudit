@@ -40,12 +40,25 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
 }
 """
 
-    def __init__(self):
+    def __init__(self, max_parallel):
         self._sub_queries = []
         self._common_frags = []
+        self._max_parallel = max_parallel
+        self._queue = []
+
+    # check for contention so that max_parallel
+    # is respected
+    def _parallel_wait(self):
+        return len(self._sub_queries) >= self._max_parallel
+
+    def _append(self, sub_query):
+        self._sub_queries.append(sub_query)
 
     def append(self, sub_query):
-        self._sub_queries.append(sub_query)
+        if self._parallel_wait():
+            self._queue.append(sub_query)
+        else:
+            self._sub_queries.append(sub_query)
 
     def render(self):
         params = functools.reduce(lambda x, y: {**x, **y.params()}, self._sub_queries, {})
@@ -62,14 +75,21 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         sub_renders = ''.join([x.render({'page_infos': x.get_page_info()}) for x in self._sub_queries])
         return common_fragments + sub_renders + main_frag
 
+    def _dequeue(self):
+        while self._queue and not self._parallel_wait():
+            self._append(self._queue.pop())
 
     def run(self, auth_driver, args):
-        # verify all parameters:
+        assert self._queue or self._sub_queries
+
+        # TODO verify all parameters:
         #  * no unknown param
         #  * no param with without a value
         rendered = self.render()
         # print(rendered)
         # print('===============')
+
+        self._dequeue()
         for sub_query in self._sub_queries:
             print(repr(sub_query))
             args = {**sub_query.params_values(), **args}
@@ -77,7 +97,9 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         result = github_graphql_call(rendered, auth_driver, args)
         # print(result)
         # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+
         # TODO maybe check for errors here
+
         to_remove = []
         if 'data' not in result:
             print(result)
@@ -91,7 +113,7 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         return result
 
     def finished(self):
-        return not self._sub_queries
+        return not self._sub_queries and not self._queue
 
     def add_frag(self, frag):
         self._common_frags.append(frag)
