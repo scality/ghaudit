@@ -54,6 +54,9 @@ fragment pageInfoFields on PageInfo {
 """
 
 MAX_PARALLEL_QUERIES = 40
+ORG_TEAMS_MAX = 90
+ORG_MEMBERS_MAX = 90
+ORG_REPOSITORIES_MAX = 90
 
 
 def _sync_progress(data, query):
@@ -72,9 +75,9 @@ def _sync(config, auth_driver):
     query = CompoundQuery(MAX_PARALLEL_QUERIES)
     demo_params = {
         'organisation': config['organisation']['name'],
-        'teamsMax': 40,
-        'membersWithRoleMax': 40,
-        'repositoriesMax': 40,
+        'teamsMax': ORG_TEAMS_MAX,
+        'membersWithRoleMax': ORG_MEMBERS_MAX,
+        'repositoriesMax': ORG_REPOSITORIES_MAX,
     }
 
     query.add_frag(FRAG_PAGEINFO_FIELDS)
