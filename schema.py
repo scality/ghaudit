@@ -170,7 +170,6 @@ def merge_repo(old_value, new_value):
 
 
 def merge_members(old_value, new_value):
-    result = old_value
     print('merge old:')
     print(old_value)
     print('merge new:')

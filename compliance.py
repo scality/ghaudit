@@ -1,9 +1,9 @@
 # https://realpython.com/primer-on-python-decorators/
 
-from . import cache
-from . import config
-from . import policy
-from . import schema
+from ghaudit import cache
+from ghaudit import config
+from ghaudit import policy
+from ghaudit import schema
 
 class ComplianceError():
     def msg():

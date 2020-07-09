@@ -3,11 +3,11 @@ from functools import reduce
 import click
 from ruamel.yaml import YAML
 
-from . import cache
-from . import compliance
-from . import schema
-from . import auth
-from . import config
+from ghaudit import cache
+from ghaudit import compliance
+from ghaudit import schema
+from ghaudit import auth
+from ghaudit import config
 
 
 @click.group()

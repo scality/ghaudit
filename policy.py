@@ -1,4 +1,4 @@
-from . import schema
+from ghaudit import schema
 
 
 def repo_exluded(policy, repo):
