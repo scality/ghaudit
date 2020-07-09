@@ -119,7 +119,9 @@ def empty():
 
 def merge_team(old_value, new_value):
     result = old_value
+    # print('merge old:')
     # print(old_value)
+    # print('merge new:')
     # print(new_value)
     repositories = old_value['node']['repositories'] if 'repositories' in old_value['node'] else {'edges': []}
     members = old_value['node']['members'] if 'repositories' in old_value['node'] else {'edges': []}
@@ -133,16 +135,17 @@ def merge_team(old_value, new_value):
                 members['edges'].append(item)
     result['node']['repositories'] = repositories
     result['node']['members'] = members
+    # print('merge result:')
     # print(result)
     return result
 
 
 def merge_repo(old_value, new_value):
     result = old_value
-    print('merge old:')
-    print(old_value)
-    print('merge new:')
-    print(new_value)
+    # print('merge old:')
+    # print(old_value)
+    # print('merge new:')
+    # print(new_value)
     if 'collaborators' in old_value['node']:
         collaborators = old_value['node']['collaborators']
     else:
@@ -152,9 +155,18 @@ def merge_repo(old_value, new_value):
             if item:
                 collaborators['edges'].append(item)
     result['node']['collaborators'] = collaborators
-    print('merge result:')
-    print(result)
+    # print('merge result:')
+    # print(result)
     return result
+
+
+def merge_members(old_value, new_value):
+    result = old_value
+    print('merge old:')
+    print(old_value)
+    print('merge new:')
+    print(new_value)
+    assert False
 
 
 def merge(rstate, new_data):
@@ -173,7 +185,7 @@ def merge(rstate, new_data):
         },
         'membersWithRole': {
             'get_by_id': get_user_by_id,
-            'merge': None
+            'merge': merge_members,
         }
     }
     for key in ['repositories', 'teams', 'membersWithRole']:
@@ -181,7 +193,6 @@ def merge(rstate, new_data):
             for item in new_data['data']['organization'][key]['edges']:
                 existing_item = funcs[key]['get_by_id'](rstate, item['node']['id'])
                 if existing_item:
-                    print(item)
                     new_list = [x for x in rstate['data']['organization'][key]['edges'] if x['node']['id'] != item['node']['id']]
                     new_list.append(funcs[key]['merge'](existing_item, item))
                     rstate['data']['organization'][key]['edges'] = new_list
