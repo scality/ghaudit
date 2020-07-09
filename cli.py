@@ -79,6 +79,10 @@ def repo_short_str(repo):
     return schema.repo_name(repo)
 
 
+def team_short_str(team):
+    return schema.team_name(team)
+
+
 @cli.command()
 def list_org_members():
     rstate = cache.load()
@@ -91,3 +95,10 @@ def list_org_repositories():
     rstate = cache.load()
     repos = schema.org_repositories(rstate)
     print_list(repos, repo_short_str)
+
+
+@cli.command()
+def list_org_teams():
+    rstate = cache.load()
+    teams = schema.org_teams(rstate)
+    print_list(teams, team_short_str)
