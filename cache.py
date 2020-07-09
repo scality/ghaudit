@@ -83,6 +83,7 @@ def _sync(config, auth_driver):
         for item in result['data'].values():
             data = schema.merge(data, {'data': {'organization': item}})
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}'.format(iterations))
+        print(query.stats())
         print('teams: {}'.format(len(schema.org_teams(data))))
         print('users: {}'.format(len(schema.org_repositories(data))))
         print('repositories: {}'.format(len(schema.org_members(data))))

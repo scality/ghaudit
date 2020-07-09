@@ -45,6 +45,11 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         self._common_frags = []
         self._max_parallel = max_parallel
         self._queue = []
+        self._stats = {
+            'iterations': 0,
+            'queries': 0,
+            'done': 0,
+        }
 
     # check for contention so that max_parallel
     # is respected
@@ -55,6 +60,7 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         self._sub_queries.append(sub_query)
 
     def append(self, sub_query):
+        self._stats['queries'] += 1
         if self._parallel_wait():
             self._queue.append(sub_query)
         else:
@@ -91,6 +97,7 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
             # print(repr(sub_query))
             args = {**sub_query.params_values(), **args}
         # print(args)
+        self._stats['iterations'] += 1
         result = github_graphql_call(rendered, auth_driver, args)
         # print(result)
         # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -107,6 +114,7 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
                 to_remove.append(sub_query)
         for value in to_remove:
             self._sub_queries.remove(value)
+            self._stats['done'] += 1
         return result
 
     def finished(self):
@@ -117,3 +125,6 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
 
     def size(self):
         return len(self._sub_queries)
+
+    def stats(self):
+        return self._stats
