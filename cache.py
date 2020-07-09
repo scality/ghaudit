@@ -88,7 +88,8 @@ def _sync(config, auth_driver):
             data = schema.merge(data, {'data': {'organization': item}})
 
         new_teams = [x for x in schema.org_teams(data) if schema.team_name(x) not in found['teams']]
-        new_repos = [x for x in schema.org_repositories(data) if schema.repo_name(x) not in found['repositories']]
+        new_repos = [x for x in schema.org_repositories(data) \
+                     if schema.repo_name(x) not in found['repositories']]
 
         for team in new_teams:
             name = schema.team_name(team)

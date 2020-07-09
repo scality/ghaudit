@@ -132,8 +132,14 @@ def merge_team(old_value, new_value):
     # print(old_value)
     # print('merge new:')
     # print(new_value)
-    repositories = old_value['node']['repositories'] if 'repositories' in old_value['node'] else {'edges': []}
-    members = old_value['node']['members'] if 'repositories' in old_value['node'] else {'edges': []}
+    if 'repositories' in old_value['node']:
+        repositories = old_value['node']['repositories']
+    else:
+        repositories = {'edges': []}
+    if 'repositories' in old_value['node']:
+        members = old_value['node']['members']
+    else:
+        members = {'edges': []}
     if 'repositories' in new_value['node'] and new_value['node']['repositories']:
         for item in new_value['node']['repositories']['edges']:
             if item:
@@ -201,14 +207,16 @@ def merge(rstate, new_data):
             for item in new_data['data']['organization'][key]['edges']:
                 existing_item = funcs[key]['get_by_id'](rstate, item['node']['id'])
                 if existing_item:
-                    new_list = [x for x in rstate['data']['organization'][key]['edges'] if x['node']['id'] != item['node']['id']]
+                    new_list = [x for x in rstate['data']['organization'][key]['edges'] \
+                                if x['node']['id'] != item['node']['id']]
                     new_list.append(funcs[key]['merge'](existing_item, item))
                     rstate['data']['organization'][key]['edges'] = new_list
                 else:
                     rstate['data']['organization'][key]['edges'].append(item)
     if 'repository' in new_data['data']['organization']:
         repo = new_data['data']['organization']['repository']
-        new_list = [x for x in rstate['data']['organization']['repositories']['edges'] if x['node']['id'] != repo['id']]
+        new_list = [x for x in rstate['data']['organization']['repositories']['edges'] \
+                    if x['node']['id'] != repo['id']]
         new_list.append(merge_repo(get_repo_by_id(rstate, repo['id']), {'node': repo}))
         rstate['data']['organization']['repositories']['edges'] = new_list
     # print('<< #############')
