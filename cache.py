@@ -56,53 +56,56 @@ fragment pageInfoFields on PageInfo {
 MAX_PARALLEL_QUERIES = 40
 
 
+def _sync_progress(data, query):
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    print(query.stats())
+    print('teams: {}'.format(len(schema.org_teams(data))))
+    print('users: {}'.format(len(schema.org_repositories(data))))
+    print('repositories: {}'.format(len(schema.org_members(data))))
+    print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+
+
 def _sync(config, auth_driver):
     data = schema.empty()
-
-    workaround = {'teamRepo': [], 'teamMember': [], 'collaborators': []}
+    found = {'teams': [], 'repositories': []}
     workaround2 = {'team': 0, 'repo': 0}
-    iterations = 0
     query = CompoundQuery(MAX_PARALLEL_QUERIES)
+    demo_params = {
+        'organisation': config['organisation']['name'],
+        'teamsMax': 40,
+        'membersWithRoleMax': 40,
+        'repositoriesMax': 40,
+    }
+
     query.add_frag(FRAG_PAGEINFO_FIELDS)
     query.append(OrgTeamsQuery())
     query.append(OrgMembersQuery())
     query.append(OrgRepoQuery())
     while not query.finished():
-        demo_params = {
-            'organisation': config['organisation']['name'],
-            'teamsMax': 40,
-            'membersWithRoleMax': 40,
-            'repositoriesMax': 40,
-        }
         result = query.run(auth_driver, demo_params)
 
         for item in result['data'].values():
             data = schema.merge(data, {'data': {'organization': item}})
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print(query.stats())
-        print('teams: {}'.format(len(schema.org_teams(data))))
-        print('users: {}'.format(len(schema.org_repositories(data))))
-        print('repositories: {}'.format(len(schema.org_members(data))))
-        print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
 
-        for count, team in enumerate(schema.org_teams(data)):
+        new_teams = [x for x in schema.org_teams(data) if schema.team_name(x) not in found['teams']]
+        new_repos = [x for x in schema.org_repositories(data) if schema.repo_name(x) not in found['repositories']]
+
+        for team in new_teams:
             name = schema.team_name(team)
-            if name not in workaround['teamRepo']:
-                query.append(TeamRepoQuery(name, workaround2['team'], 40))
-                workaround['teamRepo'].append(name)
-                workaround2['team'] += 1
+            query.append(TeamRepoQuery(name, workaround2['team'], 40))
+            workaround2['team'] += 1
+            query.append(TeamMemberQuery(name, workaround2['team'], 40))
+            workaround2['team'] += 1
+            found['teams'].append(name)
 
-            if name not in workaround['teamMember']:
-                query.append(TeamMemberQuery(name, workaround2['team'], 40))
-                workaround['teamMember'].append(name)
-                workaround2['team'] += 1
-
-        for count, repo in enumerate(schema.org_repositories(data)):
+        for repo in new_repos:
             name = schema.repo_name(repo)
-            if name not in workaround['collaborators']:
-                query.append(RepoCollaboratorQuery(name, workaround2['repo'], 40))
-                workaround['collaborators'].append(name)
-                workaround2['repo'] += 1
+            query.append(RepoCollaboratorQuery(name, workaround2['repo'], 40))
+            workaround2['repo'] += 1
+            found['repositories'].append(name)
+
+        _sync_progress(data, query)
+
         # TODO resolve all users referenced by collaborators
         # TODO cache validation:
         # * all repos referenced by teams should be known
