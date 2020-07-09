@@ -1,5 +1,5 @@
 
-class SubQuery2():
+class SubQuery():
     def __init__(self):
         self._page_info = None
         self._count = 0

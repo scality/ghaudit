@@ -31,7 +31,7 @@ def github_graphql_call(call_str, auth_driver, variables):
     return result.json()
 
 
-class CompoundQuery2():
+class CompoundQuery():
     FRAG_ENTRY_MAIN = """
 query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% if not loop.last %}, {% endif %}{% endfor %}) {
     {%- for fragment in fragments %}
@@ -65,13 +65,12 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         common_fragments = ''.join(self._common_frags)
         fragments = [x.entry() for x in self._sub_queries]
         main_frag = jinja2.Template(
-            CompoundQuery2.FRAG_ENTRY_MAIN).render(
+            CompoundQuery.FRAG_ENTRY_MAIN).render(
                 {
                     'params': params,
                     'fragments': fragments
                 }
             )
-        # render query entry point
         sub_renders = ''.join([x.render({'page_infos': x.get_page_info()}) for x in self._sub_queries])
         return common_fragments + sub_renders + main_frag
 
@@ -86,12 +85,10 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         #  * no unknown param
         #  * no param with without a value
         rendered = self.render()
-        # print(rendered)
-        # print('===============')
 
         self._dequeue()
         for sub_query in self._sub_queries:
-            print(repr(sub_query))
+            # print(repr(sub_query))
             args = {**sub_query.params_values(), **args}
         # print(args)
         result = github_graphql_call(rendered, auth_driver, args)

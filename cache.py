@@ -3,12 +3,9 @@ from os import makedirs
 from os import path
 import json
 from pathlib import Path
-import functools
 
-import requests
-import jinja2
 from ghaudit import schema
-from ghaudit.query.compound_query import CompoundQuery2
+from ghaudit.query.compound_query import CompoundQuery
 from ghaudit.query.org_teams import OrgTeamsQuery
 from ghaudit.query.org_members import OrgMembersQuery
 from ghaudit.query.org_repositories import OrgRepoQuery
@@ -20,7 +17,7 @@ from ghaudit.query.repo_collaborators import RepoCollaboratorQuery
 GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql'
 
 
-def file_path():
+def _file_path():
     def parent_dir():
         if environ.get('XDG_DATA_HOME'):
             return Path(environ.get('XDG_DATA_HOME'))
@@ -35,20 +32,21 @@ def graphql_query_file_path():
 
 
 def load():
-    with open(file_path()) as cache_file:
+    with open(_file_path()) as cache_file:
         return json.load(cache_file)
 
 
 def store(data):
-    with open(file_path(), mode='w') as cache_file:
+    with open(_file_path(), mode='w') as cache_file:
         return json.dump(data, cache_file)
 
 
 def refresh(config, auth_driver):
-    ofilepath = file_path()
+    ofilepath = _file_path()
     if not path.exists(ofilepath.parent):
         makedirs(ofilepath.parent)
-    main_loop3(config, auth_driver)
+    data = _sync(config, auth_driver)
+    store(data)
 
 
 FRAG_PAGEINFO_FIELDS = """
@@ -61,13 +59,13 @@ fragment pageInfoFields on PageInfo {
 MAX_PARALLEL_QUERIES = 40
 
 
-def main_loop3(config, auth_driver):
+def _sync(config, auth_driver):
     data = schema.empty()
 
     workaround = {'teamRepo': [], 'teamMember': [], 'collaborators': []}
     workaround2 = {'team': 0, 'repo': 0}
     iterations = 0
-    query = CompoundQuery2(MAX_PARALLEL_QUERIES)
+    query = CompoundQuery(MAX_PARALLEL_QUERIES)
     query.add_frag(FRAG_PAGEINFO_FIELDS)
     query.append(OrgTeamsQuery())
     query.append(OrgMembersQuery())
@@ -80,17 +78,14 @@ def main_loop3(config, auth_driver):
             'repositoriesMax': 40,
         }
         iterations += 1
-        print(workaround2)
         result = query.run(auth_driver, demo_params)
 
-        # check for 'errors' in result
         for item in result['data'].values():
             data = schema.merge(data, {'data': {'organization': item}})
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}'.format(iterations))
         print('teams: {}'.format(len(schema.org_teams(data))))
         print('users: {}'.format(len(schema.org_repositories(data))))
         print('repositories: {}'.format(len(schema.org_members(data))))
-        print(workaround2)
         print('{} <<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(iterations))
 
         for count, team in enumerate(schema.org_teams(data)):
@@ -116,4 +111,4 @@ def main_loop3(config, auth_driver):
         # * all repos referenced by teams should be known
         # * all users referenced by teams should be known
         # * all users referenced by repos should be known
-    store(data)
+    return data

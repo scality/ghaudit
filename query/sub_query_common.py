@@ -2,12 +2,12 @@
 import jinja2
 
 
-from ghaudit.query.sub_query import SubQuery2
+from ghaudit.query.sub_query import SubQuery
 
 
-class SubQuery2Common(SubQuery2):
+class SubQuery2Common(SubQuery):
     def __init__(self, fragments, entry, params):
-        SubQuery2.__init__(self)
+        SubQuery.__init__(self)
         self._fragments = fragments
         self._entry = entry
         self._params = params
