@@ -1,4 +1,6 @@
 
+# internal common
+
 def _get_root(rstate):
     return rstate['data']
 
@@ -32,6 +34,13 @@ def _get_unique_x_by_y(rstate, seq_get, key, value):
     return None
 
 
+# users query
+
+def users(rstate):
+    return rstate['data']['users'].values()
+
+# org queries
+
 def org_repositories(rstate):
     return _get_org_repos(rstate)
 
@@ -41,28 +50,29 @@ def org_teams(rstate):
 
 
 def org_members(rstate):
-    return [get_user_by_id(rstate, x) for x in _get_org_members(rstate)]
+    return [org_user_by_id(rstate, x) for x in _get_org_members(rstate)]
 
 
-def get_team_by_id(rstate, team_id):
+def org_team_by_id(rstate, team_id):
     return _get_unique_x_by_y(rstate, _get_org_teams, 'id', team_id)
 
 
-def get_team_by_name(rstate, name):
+def org_team_by_name(rstate, name):
     return _get_unique_x_by_y(rstate, _get_org_teams, 'name', name)
 
 
-def get_repo_by_id(rstate, repo_id):
+def org_repo_by_id(rstate, repo_id):
     return _get_unique_x_by_y(rstate, _get_org_repos, 'id', repo_id)
 
 
-def get_repo_by_name(rstate, name):
+def org_repo_by_name(rstate, name):
     return _get_unique_x_by_y(rstate, _get_org_repos, 'name', name)
 
 
-def get_user_by_id(rstate, user_id):
+def org_user_by_id(rstate, user_id):
     return rstate['data']['users'].get(user_id)
 
+# repository info
 
 def repo_archived(repo):
     return repo['node']['isArchived']
@@ -75,6 +85,7 @@ def repo_forked(repo):
 def repo_name(repo):
     return repo['node']['name']
 
+# team info
 
 def team_name(team):
     return team['node']['name']
@@ -84,7 +95,7 @@ def team_repos(rstate, team):
     def mkobj(rstate, edge):
         return {
             'permission': edge['permission'],
-            'node': get_repo_by_id(rstate, edge['node']['id'])['node']
+            'node': org_repo_by_id(rstate, edge['node']['id'])['node']
         }
     if 'repositories' in team['node'] and team['node']['repositories']:
         return [mkobj(rstate, x) for x in team['node']['repositories']['edges'] if x is not None]
@@ -95,23 +106,25 @@ def team_members(rstate, team):
     def mkobj(rstate, edge):
         return {
             'role': edge['role'],
-            'node': get_user_by_id(rstate, edge['node']['id'])['node']
+            'node': org_user_by_id(rstate, edge['node']['id'])['node']
         }
     if 'members' in team['node'] and team['node']['members']:
         return [mkobj(rstate, x) for x in team['node']['members']['edges'] if x is not None]
     return []
 
+# repository info
 
 def repo_collaborators(rstate, repo):
     def mkobj(rstate, edge):
         return {
             'role': edge['permission'],
-            'node': get_user_by_id(rstate, edge['node']['id'])['node']
+            'node': org_user_by_id(rstate, edge['node']['id'])['node']
         }
     if 'collaborators' in repo['node'] and repo['node']['collaborators']:
         return [mkobj(rstate, x) for x in repo['node']['collaborators']['edges'] if x is not None]
     return []
 
+# user info
 
 def user_name(user):
     return user['node']['name']
@@ -124,10 +137,7 @@ def user_login(user):
 def user_email(user):
     return user['node']['login']
 
-
-def users(rstate):
-    return rstate['data']['users'].values()
-
+###
 
 def _user_create(rstate, user):
     assert 'node' in user
@@ -219,17 +229,17 @@ def merge_members(old_value, new_value):
 def merge(rstate, alias, new_data):
     funcs = {
         'teams': {
-            'get_by_id': get_team_by_id,
+            'get_by_id': org_team_by_id,
             'merge': merge_team,
             'create': lambda rstate, item: rstate['data']['organization']['teams']['edges'].append(item),
         },
         'repositories': {
-            'get_by_id': get_repo_by_id,
+            'get_by_id': org_repo_by_id,
             'merge': merge_repo,
             'create': lambda rstate, item: rstate['data']['organization']['repositories']['edges'].append(item),
         },
         'membersWithRole': {
-            'get_by_id': get_user_by_id,
+            'get_by_id': org_user_by_id,
             'merge': merge_members,
             'create': _org_member_create,
         }
@@ -251,7 +261,7 @@ def merge(rstate, alias, new_data):
         repo = new_data['data']['organization']['repository']
         new_list = [x for x in rstate['data']['organization']['repositories']['edges'] \
                     if x['node']['id'] != repo['id']]
-        new_list.append(merge_repo(get_repo_by_id(rstate, repo['id']), {'node': repo}))
+        new_list.append(merge_repo(org_repo_by_id(rstate, repo['id']), {'node': repo}))
         rstate['data']['organization']['repositories']['edges'] = new_list
     return rstate
 
@@ -261,7 +271,7 @@ def missing_collaborators(rstate, repo):
     if 'collaborators' in repo['node'] and repo['node']['collaborators']:
         for edge in [x for x in repo['node']['collaborators']['edges'] if x is not None]:
             user_id = edge['node']['id']
-            if not get_user_by_id(rstate, user_id):
+            if not org_user_by_id(rstate, user_id):
                 missing.append(edge['node']['login'])
     return missing
 

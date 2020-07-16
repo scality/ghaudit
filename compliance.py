@@ -48,7 +48,7 @@ def check_missing_repos(rstate, conf, policy_):
     """Check if a repository is part of the policy_, but does not exist
     """
     for repo_name in policy.get_repos(policy_):
-        if not schema.get_repo_by_name(rstate, repo_name):
+        if not schema.org_repo_by_name(rstate, repo_name):
             print('Error: repository "{}" does not exist'.format(repo_name))
 
 
@@ -57,7 +57,7 @@ def check_missing_teams(rstate, conf, policy_):
     """
     for team in config.get_teams(conf):
         name = config.team_name(team)
-        if not schema.get_team_by_name(rstate, name):
+        if not schema.org_team_by_name(rstate, name):
             print('Error: team "{}" does not exist'.format(name))
 
 
