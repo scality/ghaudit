@@ -1,45 +1,67 @@
 
-def get_team_by_id(rstate, team_id):
-    teams = rstate['data']['organization']['teams']['edges']
-    elems = [x for x in teams if x['node']['id'] == team_id]
+def _get_root(rstate):
+    return rstate['data']
+
+
+def _get_org(rstate):
+    return _get_root(rstate)['organization']
+
+
+def _get_org_teams(rstate):
+    return _get_org(rstate)['teams']['edges']
+
+
+def _get_org_repos(rstate):
+    return _get_org(rstate)['repositories']['edges']
+
+
+def _get_org_members(rstate):
+    return _get_org(rstate)['membersWithRole']
+
+
+def _get_x_by_y(rstate, seq_get, key, value):
+    seq = seq_get(rstate)
+    return [x for x in seq if x['node'][key] == value]
+
+
+def _get_unique_x_by_y(rstate, seq_get, key, value):
+    elems = _get_x_by_y(rstate, seq_get, key, value)
     assert len(elems) <= 1
     if elems:
         return elems[0]
     return None
+
+
+def org_repositories(rstate):
+    return _get_org_repos(rstate)
+
+
+def org_teams(rstate):
+    return _get_org_teams(rstate)
+
+
+def org_members(rstate):
+    return [get_user_by_id(rstate, x) for x in _get_org_members(rstate)]
+
+
+def get_team_by_id(rstate, team_id):
+    return _get_unique_x_by_y(rstate, _get_org_teams, 'id', team_id)
 
 
 def get_team_by_name(rstate, name):
-    teams = rstate['data']['organization']['teams']['edges']
-    elems = [x for x in teams if x['node']['name'] == name]
-    assert len(elems) <= 1
-    if elems:
-        return elems[0]
-    return None
+    return _get_unique_x_by_y(rstate, _get_org_teams, 'name', name)
 
 
 def get_repo_by_id(rstate, repo_id):
-    repos = rstate['data']['organization']['repositories']['edges']
-    elems = [x for x in repos if x['node']['id'] == repo_id]
-    assert len(elems) <= 1
-    if elems:
-        return elems[0]
-    return None
+    return _get_unique_x_by_y(rstate, _get_org_repos, 'id', repo_id)
 
 
 def get_repo_by_name(rstate, name):
-    repos = rstate['data']['organization']['repositories']['edges']
-    elems = [x for x in repos if x['node']['name'] == name]
-    assert len(elems) <= 1
-    if elems:
-        return elems[0]
-    return None
+    return _get_unique_x_by_y(rstate, _get_org_repos, 'name', name)
 
 
 def get_user_by_id(rstate, user_id):
-    if 'users' not in rstate['data']\
-       or user_id not in rstate['data']['users']:
-        return []
-    return rstate['data']['users'][user_id]
+    return rstate['data']['users'].get(user_id)
 
 
 def repo_archived(repo):
@@ -103,31 +125,8 @@ def user_email(user):
     return user['node']['login']
 
 
-def org_repositories(rstate):
-    try:
-        return rstate['data']['organization']['repositories']['edges']
-    except KeyError:
-        return []
-
-
-def org_teams(rstate):
-    try:
-        return rstate['data']['organization']['teams']['edges']
-    except KeyError:
-        return []
-
-
-def org_members(rstate):
-    try:
-        return [get_user_by_id(rstate, x) for x in rstate['data']['organization']['membersWithRole']]
-    except KeyError:
-        return []
-
 def users(rstate):
-    try:
-        return rstate['data']['users'].values()
-    except KeyError:
-        return []
+    return rstate['data']['users'].values()
 
 
 def _user_create(rstate, user):
