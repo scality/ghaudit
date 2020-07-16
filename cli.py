@@ -11,9 +11,12 @@ from ghaudit import config
 
 
 @click.group()
-@click.option('-c', '--config', 'config_filename', default=config.default_dir() / 'scality.yml')
-@click.option('--user-map', 'usermap_filename', default=config.default_dir() / 'user map.yml')
-@click.option('--policy', 'policy_filename', default=config.default_dir() / 'policy.yml')
+@click.option('-c', '--config', 'config_filename',
+              default=config.default_dir() / 'scality.yml')
+@click.option('--user-map', 'usermap_filename',
+              default=config.default_dir() / 'user map.yml')
+@click.option('--policy', 'policy_filename',
+              default=config.default_dir() / 'policy.yml')
 @click.pass_context
 def cli(ctx, config_filename, usermap_filename, policy_filename):
     ctx.ensure_object(dict)

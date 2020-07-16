@@ -2,7 +2,7 @@ from ghaudit.query.sub_query_common import SubQuery2Common
 
 
 class UserQuery(SubQuery2Common):
-    
+
     FRAG_USER = """
 fragment user{{ num }} on Query {
   user{{ num }}: user(login: "{{ login }}") {

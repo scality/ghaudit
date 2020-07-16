@@ -5,6 +5,7 @@ from ghaudit import config
 from ghaudit import policy
 from ghaudit import schema
 
+
 class ComplianceError():
     def msg():
         raise NotImplementedError('abstract function call')
@@ -34,14 +35,15 @@ def check_repo(rstate, conf, policy_, repo):
     check 2: check that all collaborators conform to the policy
     """
     name = schema.repo_name(repo)
-    if not name in policy.get_repos(policy_):
+    if name not in policy.get_repos(policy_):
         if policy.repo_in_scope(policy_, repo):
             print('Error: repository "{}" not referenced in the policy'.format(name))
     else:
         if policy.repo_in_scope(policy_, repo):
             collaborators = schema.repo_collaborators(rstate, repo)
             for collaborator in collaborators:
-                check_repo_collaborator(rstate, conf, policy_, repo, collaborator)
+                check_repo_collaborator(rstate, conf, policy_, repo,
+                                        collaborator)
 
 
 def check_missing_repos(rstate, conf, policy_):
@@ -91,7 +93,8 @@ def check_team(rstate, conf, policy_, team):
         else:
             print('Warning: unknown team "{}"'.format(name))
 
-    for repo in [x for x in schema.team_repos(rstate, team) if policy.repo_in_scope(policy_, x)]:
+    repositories = schema.team_repos(rstate, team)
+    for repo in [x for x in repositories if policy.repo_in_scope(policy_, x)]:
         repo_name = schema.repo_name(repo)
         policy_perm = policy.team_repo_perm(policy_, team, repo)
         if not policy_perm:

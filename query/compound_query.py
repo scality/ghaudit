@@ -10,7 +10,7 @@ GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql'
 
 
 # TODO move this somewhere else
-def github_graphql_call(call_str, auth_driver, variables, session = requests.session()):
+def github_graphql_call(call_str, auth_driver, variables, session=requests.session()):
     # print({'query': call_str, 'variables': json.dumps(variables)})
     result = session.post(
         GITHUB_GRAPHQL_ENDPOINT,
