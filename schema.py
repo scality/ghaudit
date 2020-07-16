@@ -143,7 +143,7 @@ def user_login(user):
 
 
 def user_email(user):
-    return user['node']['login']
+    return user['node']['email']
 
 ###
 
