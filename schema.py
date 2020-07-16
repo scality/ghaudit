@@ -145,6 +145,10 @@ def user_login(user):
 def user_email(user):
     return user['node']['email']
 
+
+def user_company(user):
+    return user['node']['company']
+
 ###
 
 
