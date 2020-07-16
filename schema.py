@@ -33,7 +33,11 @@ def _get_unique_x_by_y(rstate, seq_get, key, value):
         return elems[0]
     return None
 
-# users query
+# users queries
+
+
+def user_by_login(rstate, login):
+    return _get_unique_x_by_y(rstate, users, 'login', login)
 
 
 def users(rstate):
@@ -87,6 +91,18 @@ def repo_forked(repo):
 def repo_name(repo):
     return repo['node']['name']
 
+
+def repo_collaborators(rstate, repo):
+    def mkobj(rstate, edge):
+        return {
+            'role': edge['permission'],
+            'node': org_user_by_id(rstate, edge['node']['id'])['node']
+        }
+    if 'collaborators' in repo['node'] and repo['node']['collaborators']:
+        collaborators = repo['node']['collaborators']['edges']
+        return [mkobj(rstate, x) for x in collaborators if x is not None]
+    return []
+
 # team info
 
 
@@ -115,20 +131,6 @@ def team_members(rstate, team):
     if 'members' in team['node'] and team['node']['members']:
         members = team['node']['members']['edges']
         return [mkobj(rstate, x) for x in members if x is not None]
-    return []
-
-# repository info
-
-
-def repo_collaborators(rstate, repo):
-    def mkobj(rstate, edge):
-        return {
-            'role': edge['permission'],
-            'node': org_user_by_id(rstate, edge['node']['id'])['node']
-        }
-    if 'collaborators' in repo['node'] and repo['node']['collaborators']:
-        collaborators = repo['node']['collaborators']['edges']
-        return [mkobj(rstate, x) for x in collaborators if x is not None]
     return []
 
 # user info

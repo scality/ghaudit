@@ -1,5 +1,3 @@
-from functools import reduce
-
 import click
 from ruamel.yaml import YAML
 
@@ -8,6 +6,7 @@ from ghaudit import compliance
 from ghaudit import schema
 from ghaudit import auth
 from ghaudit import config
+from ghaudit import ui
 
 
 @click.group()
@@ -63,12 +62,6 @@ def cache_refresh(ctx, token_pass_name):
     cache.refresh(ctx.obj['config'], auth_driver)
 
 
-def print_list(elems, elem_fmt):
-    def fmt(elem):
-        return ' * {}\n'.format(elem_fmt(elem))
-    print(reduce(lambda x, y: x + fmt(y), elems, ''))
-
-
 def user_short_str(user):
     if schema.user_name(user):
         return '{} ({})'.format(
@@ -87,30 +80,232 @@ def team_short_str(team):
 
 
 @cli.command()
-def list_org_members():
-    rstate = cache.load()
-    members = schema.org_members(rstate)
-    print_list(members, user_short_str)
-
-
-@cli.command()
-def list_org_repositories():
-    rstate = cache.load()
-    repos = schema.org_repositories(rstate)
-    print_list(repos, repo_short_str)
-
-
-@cli.command()
-def list_org_teams():
-    rstate = cache.load()
-    teams = schema.org_teams(rstate)
-    print_list(teams, team_short_str)
-
-
-@cli.command()
 def stats():
     rstate = cache.load()
     print('teams: {}'.format(len(schema.org_teams(rstate))))
     print('repositories: {}'.format(len(schema.org_repositories(rstate))))
     print('members: {}'.format(len(schema.org_members(rstate))))
     print('users: {}'.format(len(schema.users(rstate))))
+
+
+def _user_table_info(user=None):
+    if user:
+        return (
+            (schema.user_login(user), 30),
+            (schema.user_name(user), 30),
+            (schema.user_company(user), 30),
+            (schema.user_email(user), 30),
+        )
+    return (
+        ('login', 30),
+        ('name', 30),
+        ('company', 30),
+        ('email', 30),
+    )
+
+
+def _common_list(list_func, mode, fmt, rstate=None):
+    if not rstate:
+        rstate = cache.load()
+    _list = list_func(rstate)
+    ui.print_items(mode, _list, fmt)
+
+
+@cli.group('org')
+def org_group():
+    pass
+
+
+@org_group.group('repositories')
+def org_repositories_group():
+    pass
+
+
+@org_repositories_group.command('list')
+@click.option('--format', 'mode',
+              type=click.Choice(['basic', 'json', 'table']),
+              default='basic')
+def org_repositories_list(mode):
+    _common_list(schema.org_repositories, mode, ui.Formatter(
+        (('name', 40), ('archived', 8), ('fork', 5)),
+        lambda x: (
+            (schema.repo_name(x), 40),
+            (schema.repo_archived(x), 8),
+            (schema.repo_forked(x), 5),
+        ),
+        repo_short_str
+    ))
+
+
+@org_repositories_group.command('count')
+def org_repositories_count():
+    rstate = cache.load()
+    repos = schema.org_repositories(rstate)
+    print(len(repos))
+
+
+@org_group.group('members')
+def org_members_group():
+    pass
+
+
+@org_members_group.command('list')
+@click.option('--format', 'mode',
+              type=click.Choice(['basic', 'json', 'table']),
+              default='basic')
+def org_members_list(mode):
+    _common_list(schema.org_members, mode, ui.Formatter(
+        (('login', 30), ('name', 30), ('company', 30), ('email', 30)),
+        lambda x: (
+            (schema.user_login(x), 30),
+            (schema.user_name(x), 30),
+            (schema.user_company(x), 30),
+            (schema.user_email(x), 30),
+        ),
+        user_short_str
+    ))
+
+
+@org_members_group.command('count')
+def org_members_count():
+    rstate = cache.load()
+    members = schema.org_members(rstate)
+    print(len(members))
+
+
+@org_group.group('teams')
+def org_teams_group():
+    pass
+
+
+@org_teams_group.command('list')
+@click.option('--format', 'mode',
+              type=click.Choice(['basic', 'json', 'table']),
+              default='basic')
+def org_teams_list(mode):
+    rstate = cache.load()
+    _common_list(schema.org_teams, mode, ui.Formatter(
+        (('name', 30), ('repositories', 12), ('members', 7)),
+        lambda x: (
+            (schema.team_name(x), 30),
+            (len(schema.team_repos(rstate, x)), 12),
+            (len(schema.team_members(rstate, x)), 7),
+        ),
+        team_short_str
+    ), rstate)
+
+
+@org_teams_group.command('count')
+def org_teams_count():
+    rstate = cache.load()
+    teams = schema.org_teams(rstate)
+    print(len(teams))
+
+
+@org_group.group('repository')
+def org_repository_group():
+    pass
+
+
+@org_repository_group.command('show')
+@click.argument('name')
+def org_repository_show(name):
+    def collaborators(repository):
+        result = '\n'
+        for collaborator in schema.repo_collaborators(rstate, repository):
+            permission = collaborator['role']
+            result += ('   * {} ({}): {}\n'.format(
+                schema.user_name(collaborator),
+                schema.user_login(collaborator),
+                permission,
+            ))
+        return result
+
+    rstate = cache.load()
+    repository = schema.org_repo_by_name(rstate, name)
+    print((
+        ' * name: {}\n'
+        + ' * archived: {}\n'
+        + ' * is fork: {}\n'
+        + ' * collaborators: {}')
+          .format(
+              schema.repo_name(repository),
+              schema.repo_archived(repository),
+              schema.repo_forked(repository),
+              collaborators(repository)
+          ))
+
+
+@org_group.group('team')
+def org_team_group():
+    pass
+
+
+@org_team_group.command('show')
+@click.argument('name')
+def org_team_show(name):
+    def members(team):
+        result = '\n'
+        for member in schema.team_members(rstate, team):
+            permission = member['role']
+            result += ('   * {} ({}): {}\n'.format(
+                schema.user_name(member),
+                schema.user_login(member),
+                permission,
+            ))
+        return result
+
+    def repositories(team):
+        result = '\n'
+        for repo in schema.team_repos(rstate, team):
+            permission = repo['permission']
+            result += ('   * {}: {}\n'.format(
+                schema.repo_name(repo),
+                permission,
+            ))
+        return result
+
+    rstate = cache.load()
+    team = schema.org_team_by_name(rstate, name)
+    print((
+        ' * name: {}\n'
+        + ' * members: {}'
+        + ' * repositories: {}')
+          .format(
+              schema.team_name(team),
+              members(team),
+              repositories(team),
+          ))
+
+
+@cli.group('user')
+def user_group():
+    pass
+
+
+@user_group.command('show')
+@click.argument('login')
+def user_show(login):
+    def teams():
+        result = '\n'
+        for team in schema.org_teams(rstate):
+            for member in schema.team_members(rstate, team):
+                if schema.user_login(member) == login:
+                    result += '   * {}\n'.format(schema.team_name(team))
+        return result
+
+    rstate = cache.load()
+    user = schema.user_by_login(rstate, login)
+    print((
+        ' * name: {}\n'
+        + ' * login: {}\n'
+        + ' * email: {}\n'
+        + ' * company: {}\n'
+        + ' * teams: {}')
+          .format(
+              schema.user_name(user),
+              schema.user_login(user),
+              schema.user_email(user),
+              schema.user_company(user),
+              teams()
+          ))
