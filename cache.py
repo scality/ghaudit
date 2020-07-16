@@ -12,6 +12,7 @@ from ghaudit.query.org_repositories import OrgRepoQuery
 from ghaudit.query.team_permission import TeamRepoQuery
 from ghaudit.query.user_role import TeamMemberQuery
 from ghaudit.query.repo_collaborators import RepoCollaboratorQuery
+from ghaudit.query.user import UserQuery
 
 
 def _file_path():
@@ -43,7 +44,10 @@ def refresh(config, auth_driver):
     if not path.exists(ofilepath.parent):
         makedirs(ofilepath.parent)
     data = _sync(config, auth_driver)
-    store(data)
+    print('validating cache')
+    if schema.validate(data):
+        print('persisting cache')
+        store(data)
 
 
 FRAG_PAGEINFO_FIELDS = """
@@ -63,15 +67,16 @@ def _sync_progress(data, query):
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     print(query.stats())
     print('teams: {}'.format(len(schema.org_teams(data))))
-    print('users: {}'.format(len(schema.org_repositories(data))))
-    print('repositories: {}'.format(len(schema.org_members(data))))
+    print('repositories: {}'.format(len(schema.org_repositories(data))))
+    print('members: {}'.format(len(schema.org_members(data))))
+    print('users: {}'.format(len(schema.users(data))))
     print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
 
 
 def _sync(config, auth_driver):
     data = schema.empty()
-    found = {'teams': [], 'repositories': []}
-    workaround2 = {'team': 0, 'repo': 0}
+    found = {'teams': [], 'repositories': [], 'collaborators': []}
+    workaround2 = {'team': 0, 'repo': 0, 'user': 0}
     query = CompoundQuery(MAX_PARALLEL_QUERIES)
     demo_params = {
         'organisation': config['organisation']['name'],
@@ -87,12 +92,15 @@ def _sync(config, auth_driver):
     while not query.finished():
         result = query.run(auth_driver, demo_params)
 
-        for item in result['data'].values():
-            data = schema.merge(data, {'data': {'organization': item}})
+        for key, value in result['data'].items():
+            data = schema.merge(data, key, {'data': {'organization': value}})
 
         new_teams = [x for x in schema.org_teams(data) if schema.team_name(x) not in found['teams']]
         new_repos = [x for x in schema.org_repositories(data) \
                      if schema.repo_name(x) not in found['repositories']]
+        new_collaborators = [y for x in schema.org_repositories(data) for
+                             y in schema.missing_collaborators(data, x)\
+                             if y not in found['collaborators']]
 
         for team in new_teams:
             name = schema.team_name(team)
@@ -108,11 +116,11 @@ def _sync(config, auth_driver):
             workaround2['repo'] += 1
             found['repositories'].append(name)
 
+        for login in new_collaborators:
+            query.append(UserQuery(login, workaround2['user']))
+            workaround2['user'] += 1
+            found['collaborators'].append(login)
+
         _sync_progress(data, query)
 
-        # TODO resolve all users referenced by collaborators
-        # TODO cache validation:
-        # * all repos referenced by teams should be known
-        # * all users referenced by teams should be known
-        # * all users referenced by repos should be known
     return data

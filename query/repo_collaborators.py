@@ -14,6 +14,7 @@ fragment repo{{ num }}CollaboratorFields on Repository {
       permission
       node {
         id
+        login
       }
     }
   }

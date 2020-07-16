@@ -36,12 +36,10 @@ def get_repo_by_name(rstate, name):
 
 
 def get_user_by_id(rstate, user_id):
-    users = rstate['data']['organization']['membersWithRole']['edges']
-    elems = [x for x in users if x['node']['id'] == user_id]
-    assert len(elems) <= 1
-    if elems:
-        return elems[0]
-    return None
+    if 'users' not in rstate['data']\
+       or user_id not in rstate['data']['users']:
+        return []
+    return rstate['data']['users'][user_id]
 
 
 def repo_archived(repo):
@@ -101,6 +99,10 @@ def user_login(user):
     return user['node']['login']
 
 
+def user_email(user):
+    return user['node']['login']
+
+
 def org_repositories(rstate):
     try:
         return rstate['data']['organization']['repositories']['edges']
@@ -117,13 +119,45 @@ def org_teams(rstate):
 
 def org_members(rstate):
     try:
-        return rstate['data']['organization']['membersWithRole']['edges']
+        return [get_user_by_id(rstate, x) for x in rstate['data']['organization']['membersWithRole']]
+    except KeyError:
+        return []
+
+def users(rstate):
+    try:
+        return rstate['data']['users'].values()
     except KeyError:
         return []
 
 
+def _user_create(rstate, user):
+    assert 'node' in user
+    assert 'login' in user['node'] and user['node']['login']
+    assert 'id' in user['node'] and user['node']['id']
+    assert 'email' in user['node']
+    user_id = user['node'].pop('id')
+    rstate['data']['users'][user_id] = user
+    return rstate
+
+
+def _org_member_create(rstate, member):
+    user_id = member['node']['id']
+    rstate = _user_create(rstate, member)
+    rstate['data']['organization']['membersWithRole'].append(user_id)
+    return rstate
+
+
 def empty():
-    return {}
+    return {
+        'data': {
+            'users': {},
+            'organization': {
+                'repositories': {'edges': []},
+                'membersWithRole': [],
+                'teams': {'edges': []},
+            }
+        }
+    }
 
 
 def merge_team(old_value, new_value):
@@ -176,32 +210,33 @@ def merge_repo(old_value, new_value):
 
 
 def merge_members(old_value, new_value):
-    print('merge old:')
-    print(old_value)
-    print('merge new:')
-    print(new_value)
+    # print('merge old:')
+    # print(old_value)
+    # print('merge new:')
+    # print(new_value)
     assert False
 
 
-def merge(rstate, new_data):
-    if not rstate:
-        return new_data
-    # print('>> #############')
-    # print(new_data)
+def merge(rstate, alias, new_data):
     funcs = {
         'teams': {
             'get_by_id': get_team_by_id,
             'merge': merge_team,
+            'create': lambda rstate, item: rstate['data']['organization']['teams']['edges'].append(item),
         },
         'repositories': {
             'get_by_id': get_repo_by_id,
             'merge': merge_repo,
+            'create': lambda rstate, item: rstate['data']['organization']['repositories']['edges'].append(item),
         },
         'membersWithRole': {
             'get_by_id': get_user_by_id,
             'merge': merge_members,
+            'create': _org_member_create,
         }
     }
+    if alias.startswith('user'):
+        return _user_create(rstate, {'node': new_data['data']['organization']})
     for key in ['repositories', 'teams', 'membersWithRole']:
         if key in new_data['data']['organization']:
             for item in new_data['data']['organization'][key]['edges']:
@@ -212,12 +247,37 @@ def merge(rstate, new_data):
                     new_list.append(funcs[key]['merge'](existing_item, item))
                     rstate['data']['organization'][key]['edges'] = new_list
                 else:
-                    rstate['data']['organization'][key]['edges'].append(item)
+                    funcs[key]['create'](rstate, item)
     if 'repository' in new_data['data']['organization']:
         repo = new_data['data']['organization']['repository']
         new_list = [x for x in rstate['data']['organization']['repositories']['edges'] \
                     if x['node']['id'] != repo['id']]
         new_list.append(merge_repo(get_repo_by_id(rstate, repo['id']), {'node': repo}))
         rstate['data']['organization']['repositories']['edges'] = new_list
-    # print('<< #############')
     return rstate
+
+
+def missing_collaborators(rstate, repo):
+    missing = []
+    if 'collaborators' in repo['node'] and repo['node']['collaborators']:
+        for edge in [x for x in repo['node']['collaborators']['edges'] if x is not None]:
+            user_id = edge['node']['id']
+            if not get_user_by_id(rstate, user_id):
+                missing.append(edge['node']['login'])
+    return missing
+
+
+def validate(rstate):
+    # * all repos referenced by teams should be known
+    # * all users referenced by teams should be known
+    # * all users referenced by repos should be known
+    # for team in org_teams(rstate):
+    for repo in org_repositories(rstate):
+        for missing in  missing_collaborators(rstate, repo):
+            raise RuntimeError(
+                'unknown user "{}" referenced as a collaborator of "{}"'.format(
+                    missing,
+                    repo_name(repo),
+                )
+            )
+    return True

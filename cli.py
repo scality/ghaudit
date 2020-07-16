@@ -108,5 +108,6 @@ def list_org_teams():
 def stats():
     rstate = cache.load()
     print('teams: {}'.format(len(schema.org_teams(rstate))))
-    print('users: {}'.format(len(schema.org_repositories(rstate))))
-    print('repositories: {}'.format(len(schema.org_members(rstate))))
+    print('repositories: {}'.format(len(schema.org_repositories(rstate))))
+    print('members: {}'.format(len(schema.org_members(rstate))))
+    print('users: {}'.format(len(schema.users(rstate))))
