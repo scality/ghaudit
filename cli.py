@@ -225,11 +225,13 @@ def org_repository_show(name):
     repository = schema.org_repo_by_name(rstate, name)
     print((
         ' * name: {}\n'
+        + ' * description: {}\n'
         + ' * archived: {}\n'
         + ' * is fork: {}\n'
         + ' * collaborators: {}')
           .format(
               schema.repo_name(repository),
+              schema.repo_description(repository),
               schema.repo_archived(repository),
               schema.repo_forked(repository),
               collaborators(repository)
@@ -269,10 +271,12 @@ def org_team_show(name):
     team = schema.org_team_by_name(rstate, name)
     print((
         ' * name: {}\n'
+        + ' * description: {}\n'
         + ' * members: {}'
         + ' * repositories: {}')
           .format(
               schema.team_name(team),
+              schema.team_description(team),
               members(team),
               repositories(team),
           ))

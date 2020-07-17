@@ -92,6 +92,10 @@ def repo_name(repo):
     return repo['node']['name']
 
 
+def repo_description(repo):
+    return repo['node']['description']
+
+
 def repo_collaborators(rstate, repo):
     def mkobj(rstate, edge):
         return {
@@ -108,6 +112,10 @@ def repo_collaborators(rstate, repo):
 
 def team_name(team):
     return team['node']['name']
+
+
+def team_description(team):
+    return team['node']['description']
 
 
 def team_repos(rstate, team):

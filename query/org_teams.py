@@ -7,6 +7,7 @@ class OrgTeamsQuery(SubQuery2Common):
 fragment teamFields on Team {
   id
   name
+  description
   privacy
 }
 """
