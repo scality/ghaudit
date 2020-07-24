@@ -102,9 +102,13 @@ def check_team(rstate, conf, policy_, team):
             continue
         perm = policy.perm_translate(repo['permission'])
         if policy.perm_higher(perm, policy_perm):
-            print('Error: permission to "{}" is too high for team "{}".'.format(repo_name, name))
-        if perm != policy_perm:
-            print('Error: permission to "{}" is too low for team "{}".'.format(repo_name, name))
+            print('Error: permission to "{}" is too high for team "{}" ({} instead of {}).'
+                  .format(
+                      repo_name, name, perm, policy_perm
+                  ))
+        elif perm != policy_perm:
+            print('Error: permission to "{}" is too low for team "{}" ({} instead of {}).'
+                  .format(repo_name, name, perm, policy_perm))
 
     if config.get_team(conf, name):
         for member in schema.team_members(rstate, team):
