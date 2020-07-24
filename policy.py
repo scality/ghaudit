@@ -25,13 +25,13 @@ def perm_translate(perm):
     return perm_map[perm]
 
 
-# chekc if perm1 is higher than perm2
+# chek if perm1 is higher than perm2
 def perm_higher(perm1, perm2):
     assert perm1 in ['read', 'write', 'admin']
     if perm1 == 'read':
         return perm2 != perm1
     if perm1 == 'write':
-        return perm2 == 'admin'
+        return perm2 != 'admin'
     # then perm1 == 'admin'
     return False
 
