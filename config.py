@@ -27,6 +27,34 @@ def team_name(team):
     return team['name']
 
 
+def team_members(team):
+    if team['members']:
+        return team['members']
+    return []
+
+
+def team_children(team):
+    if 'children' in team:
+        return team['children']
+    return []
+
+
+def team_parent(config, team):
+    def is_parent(entry, team):
+        return team_name(team) in team_children(entry)
+
+    elems = [x for x in get_teams(config) if is_parent(x, team)]
+    assert len(elems) <= 1
+    if elems:
+        return elems[0]
+    return None
+
+
+def user_teams(config, email):
+    elems = [x for x in get_teams(config) if email in team_members(x)]
+    return elems
+
+
 def default_dir():
     def parent_dir():
         if environ.get('XDG_CONFIG_HOME'):

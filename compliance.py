@@ -4,46 +4,161 @@ from ghaudit import cache
 from ghaudit import config
 from ghaudit import policy
 from ghaudit import schema
+from ghaudit import user_map
 
 
-class ComplianceError():
-    def msg():
-        raise NotImplementedError('abstract function call')
-
-    # Exact type of the error
-    def err_type():
-        raise NotImplementedError('abstract function call')
-
-    # tell whether:
-    # - something is missing
-    # - something is added
-    # - something is different
-    def diff_type():
-        raise NotImplementedError('abstract function call')
-
-    # should return a dict containing
-    # - target type (repo, team, member)
-    # - target ID if applicable
-    def err_targets():
-        raise NotImplementedError('abstract function call')
+def error(msg):
+    print('Error: {}'.format(msg))
 
 
-def check_repo(rstate, conf, policy_, repo):
-    """Repo compliance checks:
+def user_str(login, username, email):
+    username_str = '("{}")'.format(username) if username else '(no username)'
+    if email:
+        return 'user "{}" {}, mapped as {}'.format(login, username_str, email)
+    return 'user "{}" {}, not mapped'.format(login, username_str)
 
-    check 1: check that the repository is referenced in the policy
-    check 2: check that all collaborators conform to the policy
+
+def check_team_unref(rstate, conf, policy_, team):
+    """Check if team is referenced in config
+
+    Ignore teams that do not have access to repositories in scope
+    """
+    def in_scope(repo):
+        return policy.repo_in_scope(policy_, repo)
+
+    name = schema.team_name(team)
+    if not config.get_team(conf, name):
+        repos = [x for x in schema.team_repos(rstate, team) if in_scope(x)]
+        if repos:
+            error(
+                'unknown team "{}" has access to the following repositories: {}'
+                .format(name, [schema.repo_name(x) for x in repos])
+            )
+            return False
+    return True
+
+
+def check_repo_unref(rstate, conf, policy_, repo):
+    """Check if repository is referenced in the policy
+
+    Ignore repositories that are implicitly out of scope
     """
     name = schema.repo_name(repo)
-    if name not in policy.get_repos(policy_):
-        if policy.repo_in_scope(policy_, repo):
-            print('Error: repository "{}" not referenced in the policy'.format(name))
-    else:
-        if policy.repo_in_scope(policy_, repo):
-            collaborators = schema.repo_collaborators(rstate, repo)
-            for collaborator in collaborators:
-                check_repo_collaborator(rstate, conf, policy_, repo,
-                                        collaborator)
+    if name not in policy.get_repos(policy_) \
+       and policy.repo_in_scope(policy_, repo):
+        error('repository "{}" not referenced in the policy'.format(name))
+        return False
+    return True
+
+
+def _check_team_repo_permissions(rstate, conf, policy_, team, repo):
+    name = schema.team_name(team)
+    repo_name = schema.repo_name(repo)
+    policy_perm = policy.team_repo_perm(conf, policy_, team, repo)
+    perm = policy.perm_translate(repo['permission'])
+    if not policy_perm:
+        error(
+            'team "{}" should not have access to "{}". current permission level for the team is {}'
+            .format(name, repo_name, perm)
+        )
+        return False
+    if policy.perm_higher(perm, policy_perm):
+        error(
+            'team "{}" has permission level too high to repository "{}" ({} instead of {}).'
+            .format(name, repo_name, perm, policy_perm)
+        )
+        return False
+    if perm != policy_perm:
+        error(
+            'team "{}" has permission level too low to repository "{}" ({} instead of {}).'
+            .format(name, repo_name, perm, policy_perm)
+        )
+        return False
+    return True
+
+
+def check_team_permissions(rstate, conf, policy_, team):
+    repositories = schema.team_repos(rstate, team)
+    success = True
+
+    for repo in [x for x in repositories if policy.repo_in_scope(policy_, x)]:
+        result = _check_team_repo_permissions(
+            rstate, conf, policy_, team, repo
+        )
+        success = success and result
+    return success
+
+
+def check_team_members(rstate, conf, usermap, policy_, team):
+    name = schema.team_name(team)
+    conf_team = config.get_team(conf, name)
+    success = True
+
+    if conf_team:
+        rmembers = schema.team_members(rstate, team)
+        rmembers_emails = [user_map.email(usermap, schema.user_login(x)) for x in rmembers]
+        conf_members = config.team_members(conf_team)
+        for rmember, email in zip(rmembers, rmembers_emails):
+            if email not in config.team_members(conf_team):
+                error('{}, should not be part of the team "{}"'
+                      .format(user_str(schema.user_login(rmember),
+                                       schema.user_name(rmember), email),
+                              name))
+                success = False
+        for member in conf_members:
+            if member not in rmembers_emails:
+                error(
+                    'user "{}" should be part of the team "{}"'
+                    .format(member, name)
+                )
+                success = False
+    return success
+
+
+def check_repo_collaborators(rstate, conf, usermap, policy_, repo):
+    name = schema.repo_name(repo)
+    success = True
+
+    for collaborator in schema.repo_collaborators(rstate, repo):
+        login = schema.user_login(collaborator)
+        username = schema.user_name(collaborator)
+        email = user_map.email(usermap, login)
+        perm = policy.perm_translate(collaborator['role'])
+        policy_user_perm = policy.user_perm(rstate, conf, policy_, repo, email)
+        if not policy_user_perm:
+            error(
+                '{}, should not have access to "{}". current permission level for "{}" is {}'
+                .format(user_str(login, username, email), name, login, perm)
+            )
+            success = False
+        elif policy.perm_higher(perm, policy_user_perm):
+            error(
+                '{}, has permission level to high to repo "{}". ({} instead of {})'
+                .format(
+                    user_str(login, username, email),
+                    name, perm, policy_user_perm
+                )
+            )
+            success = False
+        elif perm != policy_user_perm:
+            error(
+                '{}, has permission level to low to repo "{}". ({} instead of {})'
+                .format(
+                    user_str(login, username, email),
+                    name, perm, policy_user_perm
+                )
+            )
+            success = False
+    return success
+
+
+def check_user(rstate, conf, usermap, policy_, user):
+    login = schema.user_login(user)
+    email = user_map.email(usermap, login)
+    if not email:
+        error('user login "{}" is not mapped.'.format(login))
+        return False
+    return True
 
 
 def check_missing_repos(rstate, conf, policy_):
@@ -63,90 +178,20 @@ def check_missing_teams(rstate, conf, policy_):
             print('Error: team "{}" does not exist'.format(name))
 
 
-def check_repo_collaborator(rstate, conf, policy_, repo, collaborator):
-    """Repo contributor compliance check:
-
-    check 1: check that the contributor should have access to the repository
-    check 2: check that the contributor has proper access level to the
-             repository
-    """
-
-
-def check_team(rstate, conf, policy_, team):
-    """Team compliance check:
-
-    check 1: check in the configuration that the team should exist
-    ? check 2: check that the team ancestors conform to the configuration ?
-    ? check 3: check that the team children conform to the configuration ?
-    """
-    name = schema.team_name(team)
-    if not config.get_team(conf, name):
-        in_scope = False
-        for repo in schema.team_repos(rstate, team):
-            if policy.repo_in_scope(policy_, repo):
-                in_scope = True
-                break
-        if in_scope:
-            print(
-                'Error: unknown team "{}" has access to repositories in the policy'.format(name)
-            )
-        else:
-            print('Warning: unknown team "{}"'.format(name))
-
-    repositories = schema.team_repos(rstate, team)
-    for repo in [x for x in repositories if policy.repo_in_scope(policy_, x)]:
-        repo_name = schema.repo_name(repo)
-        policy_perm = policy.team_repo_perm(policy_, team, repo)
-        if not policy_perm:
-            print('Error: team "{}" should not have access to {}'.format(name, repo_name))
-            continue
-        perm = policy.perm_translate(repo['permission'])
-        if policy.perm_higher(perm, policy_perm):
-            print('Error: permission to "{}" is too high for team "{}" ({} instead of {}).'
-                  .format(
-                      repo_name, name, perm, policy_perm
-                  ))
-        elif perm != policy_perm:
-            print('Error: permission to "{}" is too low for team "{}" ({} instead of {}).'
-                  .format(repo_name, name, perm, policy_perm))
-
-    if config.get_team(conf, name):
-        for member in schema.team_members(rstate, team):
-            check_team_member(rstate, conf, policy_, team, member)
-
-
-def check_team_member(rstate, conf, policy_, team, member):
-    """Team compliance check:
-
-    check 1: check that the member should be part of the team
-    check 2: check that the team has proper role
-    """
-    # name = schema.team_name(team)
-    # login = schema.user_login(member)
-    # TODO user_map
-    # email = user_map.email(login)
-    # if email and email not in config.get_team(name):
-    #     print('Error: {} should not be part of the team "{}".'.format(login, name))
-    # TODO check member role
-
-
-def check_user(rstate, conf, policy_, user):
-    login = schema.user_login(user)
-    # TODO user_map
-    # email = user_map.email(login)
-    email = None
-    if not email:
-        print('Error: member login "{}" is not mapped.'.format(login))
-
-
 def check_all(conf, usermap, policies):
     rstate = cache.load()
-    policy_ = policies[0]
-    for member in schema.org_members(rstate):
-        check_user(rstate, conf, policy_, member)
-    for team in schema.org_teams(rstate):
-        check_team(rstate, conf, policy_, team)
-    for repo in schema.org_repositories(rstate):
-        check_repo(rstate, conf, policy_, repo)
-    check_missing_teams(rstate, conf, policy_)
-    check_missing_repos(rstate, conf, policy_)
+    for policy_ in policies:
+        for repo in schema.org_repositories(rstate):
+            check_repo_unref(rstate, conf, policy_, repo)
+        for member in schema.org_members(rstate):
+            check_user(rstate, conf, usermap, policy_, member)
+        for team in schema.org_teams(rstate):
+            check_team_unref(rstate, conf, policy_, team)
+        for team in schema.org_teams(rstate):
+            check_team_permissions(rstate, conf, policy_, team)
+        for team in schema.org_teams(rstate):
+            check_team_members(rstate, conf, usermap, policy_, team)
+        for repo in schema.org_repositories(rstate):
+            check_repo_collaborators(rstate, conf, usermap, policy_, repo)
+        check_missing_teams(rstate, conf, policy_)
+        check_missing_repos(rstate, conf, policy_)

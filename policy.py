@@ -1,4 +1,5 @@
 from ghaudit import schema
+from ghaudit import config
 
 
 def repo_exluded(policy, repo):
@@ -36,12 +37,59 @@ def perm_higher(perm1, perm2):
     return False
 
 
-def team_repo_perm(policy, team, repo):
-    if schema.repo_name(repo) not in get_repos(policy):
-        return None
-    for perm in ['read', 'write', 'admin']:
-        if perm not in policy:
-            continue
-        if schema.team_name(team) in policy[perm]:
-            return perm
+def perm_highest(perm1, perm2):
+    assert perm1 in ['read', 'write', 'admin']
+    assert perm2 in ['read', 'write', 'admin']
+    if 'admin' in [perm1, perm2]:
+        return 'admin'
+    if 'write' in [perm1, perm2]:
+        return 'write'
+    return 'read'
+
+
+def _team_perm(conf, policy, conf_team):
+    perm = None
+    parent_perm = None
+    parent = config.team_parent(conf, conf_team)
+
+    if parent:
+        parent_perm = _team_perm(conf, policy, parent)
+
+    for value in ['read', 'write', 'admin']:
+        if value in policy and config.team_name(conf_team) in policy[value]:
+            perm = value
+
+    if parent_perm and perm:
+        return perm_highest(parent_perm, perm)
+    if parent_perm:
+        return parent_perm
+    if perm:
+        return perm
     return None
+
+
+def team_repo_perm(conf, policy, team, repo):
+    conf_team = config.get_team(conf, schema.team_name(team))
+
+    if (
+            schema.repo_name(repo) not in get_repos(policy)
+            or not conf_team
+    ):
+        return None
+    return _team_perm(conf, policy, conf_team)
+
+
+def user_perm(rstate, conf, policy, repo, email):
+    if not email:
+        return None
+    policy_user_perm = None
+    team_names = [config.team_name(x) for x in config.user_teams(conf, email)]
+    for team_name in team_names:
+        team_perm = team_repo_perm(
+            conf, policy, schema.org_team_by_name(rstate, team_name), repo
+        )
+        if not policy_user_perm:
+            policy_user_perm = team_perm
+        else:
+            policy_user_perm = perm_highest(policy_user_perm, team_perm)
+    return policy_user_perm
