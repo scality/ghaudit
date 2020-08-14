@@ -15,14 +15,14 @@ from ghaudit.query.repo_collaborators import RepoCollaboratorQuery
 from ghaudit.query.user import UserQuery
 
 
-def _file_path():
+def file_path():
     def parent_dir():
         if environ.get('XDG_DATA_HOME'):
             return Path(environ.get('XDG_DATA_HOME'))
         if environ.get('HOME'):
             return Path(environ.get('HOME')) / '.local' / 'share'
         return Path('/')
-    return parent_dir() / 'ghaudit' / 'compliance' / 'cache2.json'
+    return parent_dir() / 'ghaudit' / 'compliance' / 'cache.json'
 
 
 def graphql_query_file_path():
@@ -30,17 +30,17 @@ def graphql_query_file_path():
 
 
 def load():
-    with open(_file_path()) as cache_file:
+    with open(file_path()) as cache_file:
         return json.load(cache_file)
 
 
 def store(data):
-    with open(_file_path(), mode='w') as cache_file:
+    with open(file_path(), mode='w') as cache_file:
         return json.dump(data, cache_file)
 
 
 def refresh(config, auth_driver):
-    ofilepath = _file_path()
+    ofilepath = file_path()
     if not path.exists(ofilepath.parent):
         makedirs(ofilepath.parent)
     data = _sync(config, auth_driver)
