@@ -26,7 +26,7 @@ def cli(ctx, config_filename, usermap_filename, policy_filename):
     with open(policy_filename) as policy_file:
         policy = YAML(typ='safe').load(policy_file)
     ctx.obj['config'] = conf
-    ctx.obj['usermap'] = usermap
+    ctx.obj['usermap'] = usermap['map']
     ctx.obj['policies'] = policy['policies']
 
 
