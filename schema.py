@@ -202,7 +202,7 @@ def merge_team(old_value, new_value):
         repositories = old_value['node']['repositories']
     else:
         repositories = {'edges': []}
-    if 'repositories' in old_value['node']:
+    if 'members' in old_value['node']:
         members = old_value['node']['members']
     else:
         members = {'edges': []}
