@@ -243,6 +243,21 @@ def org_team_group():
     pass
 
 
+@org_team_group.command('tree')
+def org_team_tree():
+    def print_items(items, indent):
+        for item in items:
+            print('{}* {}'.format(''.rjust(indent * 2), schema.team_name(item)))
+            not_self = lambda x: schema.team_name(x) != schema.team_name(item)
+            children = [x for x in schema.team_children(rstate, item) if not_self(x)]
+            print_items(children, indent + 1)
+
+    rstate = cache.load()
+    teams = schema.org_teams(rstate)
+    roots = [x for x in teams if not schema.team_parent(rstate, x)]
+    print_items(roots, 1)
+
+
 @org_team_group.command('show')
 @click.argument('name')
 def org_team_show(name):
@@ -267,19 +282,30 @@ def org_team_show(name):
             ))
         return result
 
+    def children(team):
+        result = '\n'
+        for child in schema.team_children(rstate, team):
+            result += ('   * {}\n'.format(
+                schema.team_name(child),
+            ))
+        return result
+
     rstate = cache.load()
     team = schema.org_team_by_name(rstate, name)
-    print((
-        ' * name: {}\n'
-        + ' * description: {}\n'
-        + ' * members: {}'
-        + ' * repositories: {}')
-          .format(
-              schema.team_name(team),
-              schema.team_description(team),
-              members(team),
-              repositories(team),
-          ))
+    print(
+        (
+            ' * name: {}\n'
+            + ' * description: {}\n'
+            + ' * members: {}'
+            + ' * repositories: {}'
+            + ' * sub teams: {}')
+        .format(
+            schema.team_name(team),
+            schema.team_description(team),
+            members(team),
+            repositories(team),
+            children(team),
+        ))
 
 
 @cli.group('user')

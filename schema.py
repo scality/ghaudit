@@ -141,6 +141,23 @@ def team_members(rstate, team):
         return [mkobj(rstate, x) for x in members if x is not None]
     return []
 
+
+def team_parent(rstate, team):
+    if team['node']['parentTeam']:
+        return org_team_by_id(rstate, team['node']['parentTeam']['id'])
+    return None
+
+
+def team_children(rstate, team):
+    def mkobj(rstate, edge):
+        return {
+            'node': org_team_by_id(rstate, edge['node']['id'])['node']
+        }
+    if 'childTeams' in team['node'] and team['node']['childTeams']:
+        children = team['node']['childTeams']['edges']
+        return [mkobj(rstate, x) for x in children if x is not None]
+    return []
+
 # user info
 
 
@@ -206,6 +223,10 @@ def merge_team(old_value, new_value):
         members = old_value['node']['members']
     else:
         members = {'edges': []}
+    if 'childTeams' in old_value['node']:
+        children = old_value['node']['childTeams']
+    else:
+        children = {'edges': []}
     if 'repositories' in new_value['node'] \
        and new_value['node']['repositories']:
         for item in new_value['node']['repositories']['edges']:
@@ -215,8 +236,15 @@ def merge_team(old_value, new_value):
         for item in new_value['node']['members']['edges']:
             if item:
                 members['edges'].append(item)
+    if 'childTeams' in new_value['node'] and new_value['node']['childTeams']:
+        # print(new_value)
+        for item in new_value['node']['childTeams']['edges']:
+            if item:
+                # print('adding {}'.format(item))
+                children['edges'].append(item)
     result['node']['repositories'] = repositories
     result['node']['members'] = members
+    result['node']['childTeams'] = children
     # print('merge result:')
     # print(result)
     return result

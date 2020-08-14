@@ -9,6 +9,9 @@ fragment teamFields on Team {
   name
   description
   privacy
+  parentTeam {
+    id
+  }
 }
 """
 

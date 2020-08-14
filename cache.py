@@ -9,9 +9,10 @@ from ghaudit.query.compound_query import CompoundQuery
 from ghaudit.query.org_teams import OrgTeamsQuery
 from ghaudit.query.org_members import OrgMembersQuery
 from ghaudit.query.org_repositories import OrgRepoQuery
+from ghaudit.query.repo_collaborators import RepoCollaboratorQuery
+from ghaudit.query.team_children import TeamChildrenQuery
 from ghaudit.query.team_permission import TeamRepoQuery
 from ghaudit.query.user_role import TeamMemberQuery
-from ghaudit.query.repo_collaborators import RepoCollaboratorQuery
 from ghaudit.query.user import UserQuery
 
 
@@ -107,6 +108,9 @@ def _sync(config, auth_driver):
             query.append(TeamRepoQuery(name, workaround2['team'], 40))
             workaround2['team'] += 1
             query.append(TeamMemberQuery(name, workaround2['team'], 40))
+            workaround2['team'] += 1
+            found['teams'].append(name)
+            query.append(TeamChildrenQuery(name, workaround2['team'], 40))
             workaround2['team'] += 1
             found['teams'].append(name)
 
