@@ -31,7 +31,7 @@ def perm_higher(perm1, perm2):
     if perm1 == 'read':
         return perm2 != perm1
     if perm1 == 'write':
-        return perm2 != 'admin'
+        return perm2 == 'read'
     # then perm1 == 'admin'
     return False
 
