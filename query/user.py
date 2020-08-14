@@ -1,7 +1,7 @@
-from ghaudit.query.sub_query_common import SubQuery2Common
+from ghaudit.query.sub_query_common import SubQueryCommon
 
 
-class UserQuery(SubQuery2Common):
+class UserQuery(SubQueryCommon):
 
     FRAG_USER = """
 fragment user{{ num }} on Query {
@@ -16,7 +16,7 @@ fragment user{{ num }} on Query {
 """
 
     def __init__(self, login, num):
-        SubQuery2Common.__init__(
+        SubQueryCommon.__init__(
             self,
             [UserQuery.FRAG_USER],
             'user{}'.format(num),
@@ -31,4 +31,4 @@ fragment user{{ num }} on Query {
     def render(self, args):
         args['login'] = self._login
         args['num'] = self._num
-        return SubQuery2Common.render(self, args)
+        return SubQueryCommon.render(self, args)

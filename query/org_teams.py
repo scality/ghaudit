@@ -1,8 +1,8 @@
 
-from ghaudit.query.sub_query_common import SubQuery2Common
+from ghaudit.query.sub_query_common import SubQueryCommon
 
 
-class OrgTeamsQuery(SubQuery2Common):
+class OrgTeamsQuery(SubQueryCommon):
     FRAG_ORG_TEAM_FIELDS = """
 fragment teamFields on Team {
   id
@@ -33,7 +33,7 @@ fragment teams on Query {
 """
 
     def __init__(self):
-        SubQuery2Common.__init__(
+        SubQueryCommon.__init__(
             self,
             [OrgTeamsQuery.FRAG_ORG_TEAM_FIELDS, OrgTeamsQuery.FRAG_ORG_TEAM],
             'teams',

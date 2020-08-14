@@ -1,8 +1,8 @@
 
-from ghaudit.query.sub_query_common import SubQuery2Common
+from ghaudit.query.sub_query_common import SubQueryCommon
 
 
-class TeamRepoQuery(SubQuery2Common):
+class TeamRepoQuery(SubQueryCommon):
     FRAG_TEAM_REPO_EDGE = """
 fragment team{{ num }}RepoPermissions on Team {
   id
@@ -35,7 +35,7 @@ fragment teamRepo{{ num }} on Query {
 """
 
     def __init__(self, team, num, max_):
-        SubQuery2Common.__init__(
+        SubQueryCommon.__init__(
             self,
             [TeamRepoQuery.FRAG_TEAM_REPO_EDGE, TeamRepoQuery.FRAG_TEAM_REPO_ENTRY],
             'teamRepo{}'.format(num),
@@ -59,7 +59,7 @@ fragment teamRepo{{ num }} on Query {
     def render(self, args):
         args['num'] = self._num
         args['team'] = self._team
-        return SubQuery2Common.render(self, args)
+        return SubQueryCommon.render(self, args)
 
     def __repr__(self):
         return '{}({}, {}): {}'.format(

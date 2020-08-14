@@ -1,8 +1,8 @@
 
-from ghaudit.query.sub_query_common import SubQuery2Common
+from ghaudit.query.sub_query_common import SubQueryCommon
 
 
-class TeamMemberQuery(SubQuery2Common):
+class TeamMemberQuery(SubQueryCommon):
     FRAG_TEAM_MEMBER_EDGE = """
 fragment team{{ num }}MemberRole on Team {
   id
@@ -35,7 +35,7 @@ fragment teamMember{{ num }} on Query {
 """
 
     def __init__(self, team, num, max_):
-        SubQuery2Common.__init__(
+        SubQueryCommon.__init__(
             self,
             [TeamMemberQuery.FRAG_TEAM_MEMBER_EDGE, TeamMemberQuery.FRAG_TEAM_MEMBER_ENTRY],
             'teamMember{}'.format(num),
@@ -59,7 +59,7 @@ fragment teamMember{{ num }} on Query {
     def render(self, args):
         args['num'] = self._num
         args['team'] = self._team
-        return SubQuery2Common.render(self, args)
+        return SubQueryCommon.render(self, args)
 
     def __repr__(self):
         return '{}({}, {}): {}'.format(

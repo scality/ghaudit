@@ -1,8 +1,8 @@
 
-from ghaudit.query.sub_query_common import SubQuery2Common
+from ghaudit.query.sub_query_common import SubQueryCommon
 
 
-class OrgRepoQuery(SubQuery2Common):
+class OrgRepoQuery(SubQueryCommon):
     FRAG_ORG_REPO_FIELDS = """
 fragment repositoryFields on Repository {
   id
@@ -35,7 +35,7 @@ fragment repositories on Query {
 """
 
     def __init__(self):
-        SubQuery2Common.__init__(
+        SubQueryCommon.__init__(
             self,
             [OrgRepoQuery.FRAG_ORG_REPO_FIELDS, OrgRepoQuery.FRAG_ORG_REPO],
             'repositories',

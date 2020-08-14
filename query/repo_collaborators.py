@@ -1,8 +1,8 @@
 
-from ghaudit.query.sub_query_common import SubQuery2Common
+from ghaudit.query.sub_query_common import SubQueryCommon
 
 
-class RepoCollaboratorQuery(SubQuery2Common):
+class RepoCollaboratorQuery(SubQueryCommon):
     FRAG_REPO_USER_EDGE = """
 fragment repo{{ num }}CollaboratorFields on Repository {
   id
@@ -32,7 +32,7 @@ fragment repoCollaborator{{ num }} on Query {
 """
 
     def __init__(self, repository, num, max_):
-        SubQuery2Common.__init__(
+        SubQueryCommon.__init__(
             self,
             [RepoCollaboratorQuery.FRAG_REPO_USER_EDGE, RepoCollaboratorQuery.FRAG_REPO_USER_ENTRY],
             'repoCollaborator{}'.format(num),
@@ -60,7 +60,7 @@ fragment repoCollaborator{{ num }} on Query {
     def render(self, args):
         args['num'] = self._num
         args['repository'] = self._repository
-        return SubQuery2Common.render(self, args)
+        return SubQueryCommon.render(self, args)
 
     def __repr__(self):
         return '{}({}, {}): {}'.format(

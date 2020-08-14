@@ -5,7 +5,7 @@ import jinja2
 from ghaudit.query.sub_query import SubQuery
 
 
-class SubQuery2Common(SubQuery):
+class SubQueryCommon(SubQuery):
     def __init__(self, fragments, entry, params):
         SubQuery.__init__(self)
         self._fragments = fragments

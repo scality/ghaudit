@@ -1,8 +1,8 @@
 
-from ghaudit.query.sub_query_common import SubQuery2Common
+from ghaudit.query.sub_query_common import SubQueryCommon
 
 
-class OrgMembersQuery(SubQuery2Common):
+class OrgMembersQuery(SubQueryCommon):
     FRAG_ORG_MEMBERS_FIELDS = """
 fragment userFields on User {
   id
@@ -31,7 +31,7 @@ fragment membersWithRole on Query {
 """
 
     def __init__(self):
-        SubQuery2Common.__init__(
+        SubQueryCommon.__init__(
             self,
             [OrgMembersQuery.FRAG_ORG_MEMBERS_FIELDS, OrgMembersQuery.FRAG_ORG_MEMBERS],
             'membersWithRole',
