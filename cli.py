@@ -245,17 +245,18 @@ def org_team_group():
 
 @org_team_group.command('tree')
 def org_team_tree():
-    def print_items(items, indent):
-        for item in items:
-            print('{}* {}'.format(''.rjust(indent * 2), schema.team_name(item)))
-            not_self = lambda x: schema.team_name(x) != schema.team_name(item)
-            children = [x for x in schema.team_children(rstate, item) if not_self(x)]
-            print_items(children, indent + 1)
+    def print_teams(teams, indent):
+        for team in teams:
+            team_name = schema.team_name(team)
+            print('{}* {}'.format(''.rjust(indent * 2), team_name))
+            children = [x for x in schema.team_children(rstate, team)
+                        if schema.team_name(x) != team_name]
+            print_teams(children, indent + 1)
 
     rstate = cache.load()
     teams = schema.org_teams(rstate)
     roots = [x for x in teams if not schema.team_parent(rstate, x)]
-    print_items(roots, 1)
+    print_teams(roots, 1)
 
 
 @org_team_group.command('show')

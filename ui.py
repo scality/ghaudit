@@ -42,8 +42,8 @@ def _print_list_table(elems, fmt):
         return reduce(lambda x, y: x + str(y[0]).center(y[1]) + '│',
                       values, '│')
 
-    def format_item(x, y):
-        return x + sep_line + format_entry(fmt.to_fields(y)) + '\n'
+    def format_item(acc_str, item):
+        return acc_str + sep_line + format_entry(fmt.to_fields(item)) + '\n'
 
     top = mkline('┌', '┬', '┐')
     sep_line = mkline('├', '┼', '┤')
@@ -56,7 +56,8 @@ def _print_list_table(elems, fmt):
 
 def _print_list_json(elems, fmt):
     def elem_to_dict(elem):
-        return {x[1][0]: x[0][0] for x in zip(fmt.to_fields(elem), fmt.table_fields)}
+        zipped = zip(fmt.to_fields(elem), fmt.table_fields)
+        return {x[1][0]: x[0][0] for x in zipped}
 
     list_of_dicts = reduce(lambda x, y: x + [elem_to_dict(y)], elems, [])
     return json.dumps(list_of_dicts)
