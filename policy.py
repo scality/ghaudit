@@ -68,8 +68,8 @@ def _team_perm(conf, policy, conf_team):
     return None
 
 
-def team_repo_perm(conf, policy, team, repo):
-    conf_team = config.get_team(conf, schema.team_name(team))
+def team_repo_perm(conf, policy, team_name, repo):
+    conf_team = config.get_team(conf, team_name)
 
     if (
             schema.repo_name(repo) not in get_repos(policy)
@@ -85,9 +85,7 @@ def user_perm(rstate, conf, policy, repo, email):
     policy_user_perm = None
     team_names = [config.team_name(x) for x in config.user_teams(conf, email)]
     for team_name in team_names:
-        team_perm = team_repo_perm(
-            conf, policy, schema.org_team_by_name(rstate, team_name), repo
-        )
+        team_perm = team_repo_perm(conf, policy, team_name, repo)
         if not policy_user_perm:
             policy_user_perm = team_perm
         else:
