@@ -39,15 +39,28 @@ def team_children(team):
     return []
 
 
-def team_parent(config, team):
+def team_parents(config, team):
     def is_parent(entry, team):
         return team_name(team) in team_children(entry)
 
-    elems = [x for x in get_teams(config) if is_parent(x, team)]
+    return [x for x in get_teams(config) if is_parent(x, team)]
+
+
+def team_parent(config, team):
+    elems = team_parents(config, team)
     assert len(elems) <= 1
     if elems:
         return elems[0]
     return None
+
+
+def team_ancestors(config, team):
+    ancestors = set()
+    parents = team_parents(config, team)
+    for team in parents:
+        ancestors.update(team_ancestors(config, team))
+    ancestors.update(map(team_name, parents))
+    return ancestors
 
 
 def user_teams(config, email):
