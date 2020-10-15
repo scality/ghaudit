@@ -1,3 +1,5 @@
+from functools import reduce
+
 from ghaudit import schema
 from ghaudit import config
 
@@ -72,15 +74,39 @@ def _team_perm(conf, policy, conf_team):
     return None
 
 
+def team_repo_explicit_perm(conf, policy, team_name):
+    """
+    returns the permissions of a team as explicitly defined in the policy,
+    without taking into account ancestors permissions
+    """
+    for value in ['read', 'write', 'admin']:
+        if value in policy and team_name in policy[value]:
+            return value
+    return None
+
+
+
+def team_repo_effective_perm(conf, policy, conf_team):
+    """
+    returns the effective permissions of a team, taking into account
+    ancestors permissions
+    """
+    related_teams = config.team_ancestors(conf, conf_team)
+    related_teams.add(config.team_name(conf_team))
+    perms = [team_repo_explicit_perm(conf, policy, x) for x in related_teams]
+    return reduce(perm_highest, perms)
+
+
 def team_repo_perm(conf, policy, team_name, repo):
+    """
+    returns the effective permission of a team if the repo
+    is part of the policy.
+    """
     conf_team = config.get_team(conf, team_name)
 
-    if (
-            schema.repo_name(repo) not in get_repos(policy)
-            or not conf_team
-    ):
+    if schema.repo_name(repo) not in get_repos(policy) or not conf_team:
         return None
-    return _team_perm(conf, policy, conf_team)
+    return team_repo_effective_perm(conf, policy, conf_team)
 
 
 def user_perm(rstate, conf, policy, repo, email):

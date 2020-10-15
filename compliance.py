@@ -54,7 +54,7 @@ def check_repo_unref(rstate, conf, policy_, repo):
 def _check_team_repo_permissions(rstate, conf, policy_, team, repo):
     name = schema.team_name(team)
     repo_name = schema.repo_name(repo)
-    policy_perm = policy.team_repo_perm(conf, policy_, team, repo)
+    policy_perm = policy.team_repo_perm(conf, policy_, schema.team_name(team), repo)
     perm = policy.perm_translate(repo['permission'])
     if not policy_perm:
         error(
