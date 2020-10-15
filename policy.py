@@ -38,6 +38,10 @@ def perm_higher(perm1, perm2):
 
 
 def perm_highest(perm1, perm2):
+    if not perm1:
+        return perm2
+    if not perm2:
+        return perm1
     assert perm1 in ['read', 'write', 'admin']
     assert perm2 in ['read', 'write', 'admin']
     if 'admin' in [perm1, perm2]:
