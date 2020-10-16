@@ -88,12 +88,12 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
     def run(self, auth_driver, args):
         assert self._queue or self._sub_queries
 
+        self._dequeue()
         # TODO verify all parameters:
         #  * no unknown param
         #  * no param with without a value
         rendered = self.render()
 
-        self._dequeue()
         for sub_query in self._sub_queries:
             # print(repr(sub_query))
             args = {**sub_query.params_values(), **args}
