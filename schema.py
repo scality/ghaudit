@@ -40,6 +40,10 @@ def user_by_login(rstate, login):
     return _get_unique_x_by_y(rstate, users, 'login', login)
 
 
+def user_by_id(rstate, user_id):
+    return rstate['data']['users'].get(user_id)
+
+
 def users(rstate):
     return rstate['data']['users'].values()
 
@@ -55,7 +59,7 @@ def org_teams(rstate):
 
 
 def org_members(rstate):
-    return [org_user_by_id(rstate, x) for x in _get_org_members(rstate)]
+    return [user_by_id(rstate, x) for x in _get_org_members(rstate)]
 
 
 def org_team_by_id(rstate, team_id):
@@ -72,10 +76,6 @@ def org_repo_by_id(rstate, repo_id):
 
 def org_repo_by_name(rstate, name):
     return _get_unique_x_by_y(rstate, _get_org_repos, 'name', name)
-
-
-def org_user_by_id(rstate, user_id):
-    return rstate['data']['users'].get(user_id)
 
 # repository info
 
@@ -100,7 +100,7 @@ def repo_collaborators(rstate, repo):
     def mkobj(rstate, edge):
         return {
             'role': edge['permission'],
-            'node': org_user_by_id(rstate, edge['node']['id'])['node']
+            'node': user_by_id(rstate, edge['node']['id'])['node']
         }
     if 'collaborators' in repo['node'] and repo['node']['collaborators']:
         collaborators = repo['node']['collaborators']['edges']
@@ -134,7 +134,7 @@ def team_members(rstate, team):
     def mkobj(rstate, edge):
         return {
             'role': edge['role'],
-            'node': org_user_by_id(rstate, edge['node']['id'])['node']
+            'node': user_by_id(rstate, edge['node']['id'])['node']
         }
     if 'members' in team['node'] and team['node']['members']:
         members = team['node']['members']['edges']
@@ -292,7 +292,7 @@ def merge(rstate, alias, new_data):
             'create': lambda rstate, x: org_repositories(rstate).append(x),
         },
         'membersWithRole': {
-            'get_by_id': org_user_by_id,
+            'get_by_id': user_by_id,
             'merge': merge_members,
             'create': _org_member_create,
         }
@@ -331,7 +331,7 @@ def missing_collaborators(rstate, repo):
         edges = repo['node']['collaborators']['edges']
         for edge in [x for x in edges if x is not None]:
             user_id = edge['node']['id']
-            if not org_user_by_id(rstate, user_id):
+            if not user_by_id(rstate, user_id):
                 missing.append(edge['node']['login'])
     return missing
 
