@@ -133,7 +133,7 @@ def check_repo_collaborators(rstate, conf, usermap, policy_, repo):
             success = False
         elif policy.perm_higher(perm, policy_user_perm):
             error(
-                '{}, has permission level to high to repo "{}". ({} instead of {})'
+                '{}, has permission level too high to repo "{}". ({} instead of {})'
                 .format(
                     user_str(login, username, email),
                     name, perm, policy_user_perm
@@ -142,7 +142,7 @@ def check_repo_collaborators(rstate, conf, usermap, policy_, repo):
             success = False
         elif perm != policy_user_perm:
             error(
-                '{}, has permission level to low to repo "{}". ({} instead of {})'
+                '{}, has permission level too low to repo "{}". ({} instead of {})'
                 .format(
                     user_str(login, username, email),
                     name, perm, policy_user_perm
