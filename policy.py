@@ -32,7 +32,7 @@ def perm_translate(perm):
 def perm_higher(perm1, perm2):
     assert perm1 in ['read', 'write', 'admin']
     if perm1 == 'read':
-        return perm2 != perm1
+        return False
     if perm1 == 'write':
         return perm2 == 'read'
     # then perm1 == 'admin'
