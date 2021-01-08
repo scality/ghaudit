@@ -4,12 +4,14 @@ from ghaudit import schema
 from ghaudit import config
 
 
-def repo_exluded(policy, repo):
+def repo_excluded(policy, repo):
+    if not policy['excluded repositories']:
+        return None
     return schema.repo_name(repo) in policy['excluded repositories']
 
 
 def repo_in_scope(policy, repo):
-    return not repo_exluded(policy, repo) and not (
+    return not repo_excluded(policy, repo) and not (
         schema.repo_archived(repo)
         or schema.repo_forked(repo)
     )
@@ -121,3 +123,24 @@ def user_perm(rstate, conf, policy, repo, email):
         else:
             policy_user_perm = perm_highest(policy_user_perm, team_perm)
     return policy_user_perm
+
+
+def test():
+    assert not perm_higher('admin', 'admin')
+    assert perm_higher('admin', 'write')
+    assert perm_higher('admin', 'read')
+    assert not perm_higher('write', 'admin')
+    assert not perm_higher('write', 'write')
+    assert perm_higher('write', 'read')
+    assert not perm_higher('read', 'admin')
+    assert not perm_higher('read', 'write')
+    assert not perm_higher('read', 'read')
+    assert perm_highest('admin', 'admin') == 'admin'
+    assert perm_highest('admin', 'write') == 'admin'
+    assert perm_highest('admin', 'read') == 'admin'
+    assert perm_highest('write', 'admin') == 'admin'
+    assert perm_highest('write', 'write') == 'write'
+    assert perm_highest('write', 'read') == 'write'
+    assert perm_highest('read', 'admin') == 'admin'
+    assert perm_highest('read', 'write') == 'write'
+    assert perm_highest('read', 'read') == 'read'
