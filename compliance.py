@@ -119,6 +119,9 @@ def check_repo_collaborators(rstate, conf, usermap, policy_, repo):
     name = schema.repo_name(repo)
     success = True
 
+    if not policy.repo_in_scope(policy_, repo):
+        return True
+
     for collaborator in schema.repo_collaborators(rstate, repo):
         login = schema.user_login(collaborator)
         username = schema.user_name(collaborator)
