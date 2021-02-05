@@ -7,6 +7,7 @@ from ghaudit import schema
 from ghaudit import auth
 from ghaudit import config
 from ghaudit import ui
+from ghaudit import policy
 
 
 @click.group()
@@ -24,10 +25,11 @@ def cli(ctx, config_filename, usermap_filename, policy_filename):
     with open(usermap_filename) as usermap_file:
         usermap = YAML(typ='safe').load(usermap_file)
     with open(policy_filename) as policy_file:
-        policy = YAML(typ='safe').load(policy_file)
+        policy_ = YAML(typ='safe').load(policy_file)
+        policy.sanity_check(policy_)
     ctx.obj['config'] = conf
     ctx.obj['usermap'] = usermap['map']
-    ctx.obj['policies'] = policy['policies']
+    ctx.obj['policies'] = policy_['policies']
 
 
 @cli.group('compliance')

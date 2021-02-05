@@ -125,6 +125,15 @@ def user_perm(rstate, conf, policy, repo, email):
     return policy_user_perm
 
 
+def sanity_check(policies):
+    for policy in policies['policies']:
+        print('checking policy "{}"'.format(policy['name']))
+        for repo in policy['repositories']:
+            if repo in policy['excluded repositories']:
+                raise RuntimeError(
+                    'error: inconsistent policy: repository "{}" is used in the policy, but also present in the list of excluded repositories'.format(repo)
+                )
+
 def test():
     assert not perm_higher('admin', 'admin')
     assert perm_higher('admin', 'write')
