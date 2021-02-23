@@ -20,16 +20,18 @@ from ghaudit import policy
 @click.pass_context
 def cli(ctx, config_filename, usermap_filename, policy_filename):
     ctx.ensure_object(dict)
+    policy_ = policy.Policy()
     with open(config_filename) as conf_file:
         conf = YAML(typ='safe').load(conf_file)
     with open(usermap_filename) as usermap_file:
         usermap = YAML(typ='safe').load(usermap_file)
     with open(policy_filename) as policy_file:
-        policy_ = YAML(typ='safe').load(policy_file)
-        policy.sanity_check(policy_)
+        policy_data = YAML(typ='safe').load(policy_file)
+        policy_.load_config(policy_data)
     ctx.obj['config'] = conf
     ctx.obj['usermap'] = usermap['map']
-    ctx.obj['policies'] = policy_['policies']
+    policy_.sanity_check()
+    ctx.obj['policy'] = policy_
 
 
 @cli.group('compliance')
@@ -43,7 +45,7 @@ def compliance_check_all(ctx):
     compliance.check_all(
         ctx.obj['config'],
         ctx.obj['usermap'],
-        ctx.obj['policies'])
+        ctx.obj['policy'])
 
 
 @cli.group('cache')

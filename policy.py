@@ -3,11 +3,101 @@ from functools import reduce
 from ghaudit import schema
 from ghaudit import config
 
+# todo switch to enum at least for access level
+
+class Policy:
+    def __init__(self):
+        self._fallback_visibility = None    # str
+        self._repos = { }                   # repo_name -> visibility
+        self._repos_blacklist = []          # repo_name
+        self._team_access = { }             # team_name + repo_name -> access
+        self._user_access = { }             # user_name + repo_name -> access
+        self._branch_protection = { }       # repo_name -> (model_name, mode_
+        self._branch_protection_model = { } # model_name -> model_data
+
+    def team_access_key(team, repo):
+        return '{},{}'.format(team, repo)
+
+    def add_merge_rule(self, rule):
+        # print('loading rule {}'.format(rule['name']))
+        repos = rule['repositories']
+        if 'team access' in rule:
+            for level, teams in rule['team access'].items():
+                assert level in ['read', 'write', 'admin']
+                # print('adding rule part: name={} level={} teams={} repos={}'.format(
+                #     rule['name'], level, teams, repos
+                # ))
+                for team in teams:
+                    for repo in repos:
+                        assert repo not in self._repos_blacklist
+                        if repo not in self._repos:
+                            self._repos[repo] = 'default'
+                        key = Policy.team_access_key(team, repo)
+                        if key in self._team_access:
+                            self._team_access[key] = perm_highest(level, self._team_access[key])
+                        else:
+                            self._team_access[key] = level
+        # for repo in repos:
+        # add branch protection here
+
+    def add_repository_blacklist(self, repo):
+        assert repo not in self._repos
+        self._repos_blacklist.append(repo)
+
+    def add_repository(self, repo_data):
+        print('adding repo from conf: {}'.format(repo_data))
+        name = repo_data['repo']
+        visibility = repo_data['visibility']
+        assert name not in self._repos_blacklist
+        if name in self._repos:
+            assert self._repos[name] == 'default'
+            self._repos[name] = visibility
+
+    def set_default_visibility(self, visibility):
+        assert not self._fallback_visibility
+        self._fallback_visibility = visibility
+
+    def apply_default_visibility(self):
+        assert self._fallback_visibility
+        for repo, visibility in self._repos:
+            if visibility == 'default':
+                self._repos[repo] = self._fallback_visibility
+
+    def sanity_check(self):
+        intersection = [v for v in self._repos if v in self._repos_blacklist]
+        assert not intersection
+
+    def load_config(self, data):
+        if 'repositories' in data:
+            repos_config = data['repositories']
+            if 'exceptions' in repos_config:
+                for repo in repos_config['exceptions']:
+                    self.add_repository_blacklist(repo)
+            if 'default_visibility' in repos_config:
+                value = repos_config['default visibility']
+                self.set_default_visibility(value)
+            for repo_data in repos_config['visibility']:
+                self.add_repository(repo_data)
+
+        if 'policy' in data:
+            if 'rules' in data['policy']:
+                for rule in data['policy']['rules']:
+                    self.add_merge_rule(rule)
+
+    def team_repo_perm(self, team, repo):
+        key = Policy.team_access_key(team, repo)
+        if key in self._team_access:
+            return self._team_access[key]
+        return None
+
+    def get_repos(self):
+        return self._repos.keys()
+
+    def is_excluded(self, repo):
+        return repo in self._repos_blacklist
 
 def repo_excluded(policy, repo):
-    if not policy['excluded repositories']:
-        return None
-    return schema.repo_name(repo) in policy['excluded repositories']
+    return policy.is_excluded(schema.repo_name(repo))
 
 
 def repo_in_scope(policy, repo):
@@ -18,7 +108,7 @@ def repo_in_scope(policy, repo):
 
 
 def get_repos(policy):
-    return policy['repositories']
+    return policy.get_repos()
 
 
 def perm_translate(perm):
@@ -76,26 +166,22 @@ def _team_perm(conf, policy, conf_team):
     return None
 
 
-def team_repo_explicit_perm(conf, policy, team_name):
+def team_repo_explicit_perm(conf, policy, team_name, repo):
     """
     returns the permissions of a team as explicitly defined in the policy,
     without taking into account ancestors permissions
     """
-    for value in ['read', 'write', 'admin']:
-        if value in policy and team_name in policy[value]:
-            return value
-    return None
+    return policy.team_repo_perm(team_name, schema.repo_name(repo))
 
 
-
-def team_repo_effective_perm(conf, policy, conf_team):
+def team_repo_effective_perm(conf, policy, conf_team, repo):
     """
     returns the effective permissions of a team, taking into account
     ancestors permissions
     """
     related_teams = config.team_ancestors(conf, conf_team)
     related_teams.add(config.team_name(conf_team))
-    perms = [team_repo_explicit_perm(conf, policy, x) for x in related_teams]
+    perms = [team_repo_explicit_perm(conf, policy, x, repo) for x in related_teams]
     return reduce(perm_highest, perms)
 
 
@@ -108,7 +194,7 @@ def team_repo_perm(conf, policy, team_name, repo):
 
     if schema.repo_name(repo) not in get_repos(policy) or not conf_team:
         return None
-    return team_repo_effective_perm(conf, policy, conf_team)
+    return team_repo_effective_perm(conf, policy, conf_team, repo)
 
 
 def user_perm(rstate, conf, policy, repo, email):
@@ -124,15 +210,6 @@ def user_perm(rstate, conf, policy, repo, email):
             policy_user_perm = perm_highest(policy_user_perm, team_perm)
     return policy_user_perm
 
-
-def sanity_check(policies):
-    for policy in policies['policies']:
-        print('checking policy "{}"'.format(policy['name']))
-        for repo in policy['repositories']:
-            if repo in policy['excluded repositories']:
-                raise RuntimeError(
-                    'error: inconsistent policy: repository "{}" is used in the policy, but also present in the list of excluded repositories'.format(repo)
-                )
 
 def test():
     assert not perm_higher('admin', 'admin')

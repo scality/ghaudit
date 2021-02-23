@@ -181,20 +181,19 @@ def check_missing_teams(rstate, conf, policy_):
             print('Error: team "{}" does not exist'.format(name))
 
 
-def check_all(conf, usermap, policies):
+def check_all(conf, usermap, policy):
     rstate = cache.load()
-    for policy_ in policies:
-        for repo in schema.org_repositories(rstate):
-            check_repo_unref(rstate, conf, policy_, repo)
-        for member in schema.org_members(rstate):
-            check_user(rstate, conf, usermap, policy_, member)
-        for team in schema.org_teams(rstate):
-            check_team_unref(rstate, conf, policy_, team)
-        for team in schema.org_teams(rstate):
-            check_team_permissions(rstate, conf, policy_, team)
-        for team in schema.org_teams(rstate):
-            check_team_members(rstate, conf, usermap, policy_, team)
-        for repo in schema.org_repositories(rstate):
-            check_repo_collaborators(rstate, conf, usermap, policy_, repo)
-        check_missing_teams(rstate, conf, policy_)
-        check_missing_repos(rstate, conf, policy_)
+    for repo in schema.org_repositories(rstate):
+        check_repo_unref(rstate, conf, policy, repo)
+    for member in schema.org_members(rstate):
+        check_user(rstate, conf, usermap, policy, member)
+    for team in schema.org_teams(rstate):
+        check_team_unref(rstate, conf, policy, team)
+    for team in schema.org_teams(rstate):
+        check_team_permissions(rstate, conf, policy, team)
+    for team in schema.org_teams(rstate):
+        check_team_members(rstate, conf, usermap, policy, team)
+    for repo in schema.org_repositories(rstate):
+        check_repo_collaborators(rstate, conf, usermap, policy, repo)
+    check_missing_teams(rstate, conf, policy)
+    check_missing_repos(rstate, conf, policy)
