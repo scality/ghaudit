@@ -1,5 +1,6 @@
 from os import environ
 from pathlib import Path
+from functools import reduce
 
 
 def get_team_in_config(config, name):
@@ -27,15 +28,35 @@ def team_name(team):
     return team['name']
 
 
-def team_members(team):
+# direct members of a team, not taking members of descendants teams into
+# account
+def team_direct_members(team):
     if team['members']:
         return team['members']
     return []
 
 
+# effective members of a team (direct members + members of descendants teams)
+def team_effective_members(config, team):
+    return reduce(
+        lambda acc, child_name: acc | set(team_direct_members(child_name)),
+        [get_team_in_config(config, x) for x in team_descendants(config, team)],
+        set(team_direct_members(team))
+    )
+
+
 def team_children(team):
     if 'children' in team:
         return team['children']
+    return []
+
+
+def team_descendants(config, team):
+    def reduce_function(acc, child_name):
+        child_team = get_team_in_config(config, child_name)
+        return acc | set(team_descendants(config, child_team)) | {child_name}
+    if 'children' in team:
+        return reduce(reduce_function, set(team_children(team)), set())
     return []
 
 
@@ -64,7 +85,7 @@ def team_ancestors(config, team):
 
 
 def user_teams(config, email):
-    elems = [x for x in get_teams(config) if email in team_members(x)]
+    elems = [x for x in get_teams(config) if email in team_direct_members(x)]
     return elems
 
 

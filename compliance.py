@@ -6,7 +6,6 @@ from ghaudit import policy
 from ghaudit import schema
 from ghaudit import user_map
 
-
 def error(msg):
     print('Error: {}'.format(msg))
 
@@ -97,9 +96,9 @@ def check_team_members(rstate, conf, usermap, policy_, team):
     if conf_team:
         rmembers = schema.team_members(rstate, team)
         rmembers_emails = [user_map.email(usermap, schema.user_login(x)) for x in rmembers]
-        conf_members = config.team_members(conf_team)
+        conf_members = config.team_direct_members(conf_team)
         for rmember, email in zip(rmembers, rmembers_emails):
-            if email not in config.team_members(conf_team):
+            if email not in config.team_effective_members(conf, conf_team):
                 error('{}, should not be part of the team "{}"'
                       .format(user_str(schema.user_login(rmember),
                                        schema.user_name(rmember), email),
