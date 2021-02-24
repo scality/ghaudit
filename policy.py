@@ -218,6 +218,8 @@ def team_repo_perm(conf, policy, team_name, repo):
 
 def user_perm(conf, policy, usermap, repo, login):
     email = user_map.email(usermap, login)
+    if config.is_owner(conf, email):
+        return 'admin'
     user_access = policy.user_access(login, schema.repo_name(repo))
     if user_access:
         return user_access

@@ -89,6 +89,10 @@ def user_teams(config, email):
     return elems
 
 
+def is_owner(config, email):
+    return email in config['organisation']['owners']
+
+
 def default_dir():
     def parent_dir():
         if environ.get('XDG_CONFIG_HOME'):
