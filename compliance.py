@@ -126,7 +126,7 @@ def check_repo_collaborators(rstate, conf, usermap, policy_, repo):
         username = schema.user_name(collaborator)
         email = user_map.email(usermap, login)
         perm = policy.perm_translate(collaborator['role'])
-        policy_user_perm = policy.user_perm(rstate, conf, policy_, repo, email)
+        policy_user_perm = policy.user_perm(conf, policy_, usermap, repo, login)
         if not policy_user_perm:
             error(
                 '{}, should not have access to "{}". current permission level for "{}" is {}'

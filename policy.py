@@ -2,6 +2,7 @@ from functools import reduce
 
 from ghaudit import schema
 from ghaudit import config
+from ghaudit import user_map
 
 # todo switch to enum at least for access level
 
@@ -11,12 +12,15 @@ class Policy:
         self._repos = { }                   # repo_name -> visibility
         self._repos_blacklist = []          # repo_name
         self._team_access = { }             # team_name + repo_name -> access
-        self._user_access = { }             # user_name + repo_name -> access
+        self._user_access = { }             # login + repo_name -> access
         self._branch_protection = { }       # repo_name -> (model_name, mode_
         self._branch_protection_model = { } # model_name -> model_data
 
     def team_access_key(team, repo):
         return '{},{}'.format(team, repo)
+
+    def user_access_key(login, repo):
+        return '{},{}'.format(login, repo)
 
     def add_merge_rule(self, rule):
         # print('loading rule {}'.format(rule['name']))
@@ -84,6 +88,15 @@ class Policy:
                 for rule in data['policy']['rules']:
                     self.add_merge_rule(rule)
 
+            if 'exceptions' in data['policy']:
+                for perm_exception in data['policy']['exceptions']:
+                    repo = perm_exception['repo']
+                    login = perm_exception['user']
+                    perm = perm_exception['permissions']
+                    key = Policy.user_access_key(login, repo)
+                    assert repo not in self._repos_blacklist
+                    self._user_access[key] = perm
+
     def team_repo_perm(self, team, repo):
         key = Policy.team_access_key(team, repo)
         if key in self._team_access:
@@ -95,6 +108,12 @@ class Policy:
 
     def is_excluded(self, repo):
         return repo in self._repos_blacklist
+
+    def user_access(self, login, repo):
+        key = Policy.user_access_key(login, repo)
+        if key in self._user_access:
+            return self._user_access[key]
+        return None
 
 def repo_excluded(policy, repo):
     return policy.is_excluded(schema.repo_name(repo))
@@ -197,7 +216,11 @@ def team_repo_perm(conf, policy, team_name, repo):
     return team_repo_effective_perm(conf, policy, conf_team, repo)
 
 
-def user_perm(rstate, conf, policy, repo, email):
+def user_perm(conf, policy, usermap, repo, login):
+    email = user_map.email(usermap, login)
+    user_access = policy.user_access(login, schema.repo_name(repo))
+    if user_access:
+        return user_access
     if not email:
         return None
     policy_user_perm = None
