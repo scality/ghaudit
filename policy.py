@@ -8,7 +8,7 @@ from ghaudit import user_map
 
 class Policy:
     def __init__(self):
-        self._fallback_visibility = None    # str
+        self._default_visibility = None     # str
         self._repos = { }                   # repo_name -> visibility
         self._repos_blacklist = []          # repo_name
         self._team_access = { }             # team_name + repo_name -> access
@@ -35,7 +35,7 @@ class Policy:
                     for repo in repos:
                         assert repo not in self._repos_blacklist
                         if repo not in self._repos:
-                            self._repos[repo] = 'default'
+                            self._repos[repo] = None
                         key = Policy.team_access_key(team, repo)
                         if key in self._team_access:
                             self._team_access[key] = perm_highest(level, self._team_access[key])
@@ -49,23 +49,19 @@ class Policy:
         self._repos_blacklist.append(repo)
 
     def add_repository(self, repo_data):
-        print('adding repo from conf: {}'.format(repo_data))
+        # print('adding repo from conf: {}'.format(repo_data))
         name = repo_data['repo']
         visibility = repo_data['visibility']
+        assert visibility in ['public', 'private']
         assert name not in self._repos_blacklist
         if name in self._repos:
-            assert self._repos[name] == 'default'
-            self._repos[name] = visibility
+            assert not self._repos[name] or self._repos[name] == visibility
+        self._repos[name] = visibility
 
     def set_default_visibility(self, visibility):
-        assert not self._fallback_visibility
-        self._fallback_visibility = visibility
-
-    def apply_default_visibility(self):
-        assert self._fallback_visibility
-        for repo, visibility in self._repos:
-            if visibility == 'default':
-                self._repos[repo] = self._fallback_visibility
+        assert not self._default_visibility or self._default_visibility == visibility
+        assert visibility in ['private', 'public']
+        self._default_visibility = visibility
 
     def sanity_check(self):
         intersection = [v for v in self._repos if v in self._repos_blacklist]
@@ -77,7 +73,7 @@ class Policy:
             if 'exceptions' in repos_config:
                 for repo in repos_config['exceptions']:
                     self.add_repository_blacklist(repo)
-            if 'default_visibility' in repos_config:
+            if 'default visibility' in repos_config:
                 value = repos_config['default visibility']
                 self.set_default_visibility(value)
             for repo_data in repos_config['visibility']:
