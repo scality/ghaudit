@@ -88,6 +88,10 @@ def repo_forked(repo):
     return repo['node']['isFork']
 
 
+def repo_private(repo):
+    return repo['node']['isPrivate']
+
+
 def repo_name(repo):
     return repo['node']['name']
 

@@ -50,6 +50,25 @@ def check_repo_unref(rstate, conf, policy_, repo):
     return True
 
 
+def check_repo_visibility(rstate, policy_, repo):
+    name = schema.repo_name(repo)
+    if not policy.repo_in_scope(policy_, repo) \
+       or name not in policy.get_repos(policy_):
+        # ignoring the repository, because it is already checked by repo_unref
+        return True
+
+    pol_visibility = policy.repo_visibility(policy_, name)
+    rvisibility = 'private' if schema.repo_private(repo) else 'public'
+    if pol_visibility != rvisibility:
+        error(
+            'repository "{}" is {}, but it should be {}'.format(
+                name, rvisibility, pol_visibility
+            )
+        )
+        return False
+    return True
+
+
 def _check_team_repo_permissions(rstate, conf, policy_, team, repo):
     name = schema.team_name(team)
     repo_name = schema.repo_name(repo)
@@ -179,11 +198,12 @@ def check_missing_teams(rstate, conf, policy_):
         if not schema.org_team_by_name(rstate, name):
             print('Error: team "{}" does not exist'.format(name))
 
-
 def check_all(conf, usermap, policy):
     rstate = cache.load()
     for repo in schema.org_repositories(rstate):
         check_repo_unref(rstate, conf, policy, repo)
+    for repo in schema.org_repositories(rstate):
+        check_repo_visibility(rstate, policy, repo)
     for member in schema.org_members(rstate):
         check_user(rstate, conf, usermap, policy, member)
     for team in schema.org_teams(rstate):

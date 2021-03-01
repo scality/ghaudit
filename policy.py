@@ -111,6 +111,12 @@ class Policy:
             return self._user_access[key]
         return None
 
+    def repo_visibility(self, repo):
+        visibility = self._repos[repo] if self._repos[repo] else self._default_visibility
+        assert visibility
+        return visibility
+
+
 def repo_excluded(policy, repo):
     return policy.is_excluded(schema.repo_name(repo))
 
@@ -230,6 +236,10 @@ def user_perm(conf, policy, usermap, repo, login):
         else:
             policy_user_perm = perm_highest(policy_user_perm, team_perm)
     return policy_user_perm
+
+
+def repo_visibility(policy, repo_name):
+    return policy.repo_visibility(repo_name)
 
 
 def test():
