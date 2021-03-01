@@ -6,6 +6,7 @@ from ghaudit import policy
 from ghaudit import schema
 from ghaudit import user_map
 
+
 def error(msg):
     print('Error: {}'.format(msg))
 
@@ -197,6 +198,7 @@ def check_missing_teams(rstate, conf, policy_):
         name = config.team_name(team)
         if not schema.org_team_by_name(rstate, name):
             print('Error: team "{}" does not exist'.format(name))
+
 
 def check_all(conf, usermap, policy):
     rstate = cache.load()

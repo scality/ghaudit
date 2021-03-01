@@ -6,19 +6,22 @@ from ghaudit import user_map
 
 # todo switch to enum at least for access level
 
+
 class Policy:
     def __init__(self):
         self._default_visibility = None     # str
-        self._repos = { }                   # repo_name -> visibility
+        self._repos = {}                    # repo_name -> visibility
         self._repos_blacklist = []          # repo_name
-        self._team_access = { }             # team_name + repo_name -> access
-        self._user_access = { }             # login + repo_name -> access
-        self._branch_protection = { }       # repo_name -> (model_name, mode_
-        self._branch_protection_model = { } # model_name -> model_data
+        self._team_access = {}              # team_name + repo_name -> access
+        self._user_access = {}              # login + repo_name -> access
+        self._branch_protection = {}        # repo_name -> (model_name, mode_
+        self._branch_protection_model = {}  # model_name -> model_data
 
+    @staticmethod
     def team_access_key(team, repo):
         return '{},{}'.format(team, repo)
 
+    @staticmethod
     def user_access_key(login, repo):
         return '{},{}'.format(login, repo)
 
