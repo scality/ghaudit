@@ -1,32 +1,135 @@
 
+from typing import Optional
+from typing import Hashable
+from typing import Mapping
+from typing import Collection
+from typing import List
+from typing_extensions import TypedDict
+
+class TeamMemberNode(TypedDict):
+    id: Hashable
+
+class TeamMemberEdge(TypedDict):
+    node: TeamMemberNode
+    role: str
+
+class TeamMemberEdges(TypedDict):
+    edges: List[TeamMemberEdge]
+
+class TeamRepoNode(TypedDict):
+    id: Hashable
+
+class TeamRepoEdge(TypedDict):
+    node: TeamRepoNode
+    permission: str
+
+class TeamRepoEdges(TypedDict):
+    edges: List[TeamRepoEdge]
+
+class TeamRef(TypedDict):
+    id: Hashable
+
+class ChildTeam(TypedDict):
+    node: TeamRef
+
+class ChildTeams(TypedDict):
+    edges: List[ChildTeam]
+
+class TeamNode(TypedDict):
+    name: str
+    description: str
+    repositories: TeamRepoEdges
+    members: TeamMemberEdges
+    parentTeam: Optional[TeamRef]
+    childTeams: ChildTeams
+
+class Team(TypedDict):
+    node: TeamNode
+
+class TeamEdges(TypedDict):
+    edges: List[Team]
+
+class UserNode(TypedDict):
+    name: Optional[str]
+    login: str
+    email: str
+    company: str
+
+class User(TypedDict):
+    node: UserNode
+
+class RepoCollaborator(TypedDict):
+    role: str
+    node: UserNode
+
+class RepoCollaboratorNode(TypedDict):
+    id: Hashable
+    login: str
+
+class RepoCollaboratorEdge(TypedDict):
+    node: RepoCollaboratorNode
+    permission: str
+
+class RepoCollaboratorEdges(TypedDict):
+    edges: List[RepoCollaboratorEdge]
+
+class RepoNode(TypedDict):
+    name: str
+    isArchived: bool
+    isFork: bool
+    isPrivate: bool
+    description: str
+    collaborators: RepoCollaboratorEdges
+
+class Repo(TypedDict):
+    node: RepoNode
+
+class RepoEdges(TypedDict):
+    edges: List[Repo]
+
+
+OrgUsers = Mapping[Hashable, User]
+
+class Organisation(TypedDict):
+    teams: TeamEdges
+    repositories: RepoEdges
+    membersWithRole: List[Hashable]
+
+class RstateData(TypedDict):
+    organization: Organisation
+    users: OrgUsers
+
+class Rstate(TypedDict):
+    data: RstateData
+
 # internal common
 
-def _get_root(rstate):
+def _get_root(rstate: Rstate) -> RstateData:
     return rstate['data']
 
 
-def _get_org(rstate):
+def _get_org(rstate: Rstate) -> Organisation:
     return _get_root(rstate)['organization']
 
 
-def _get_org_teams(rstate):
+def _get_org_teams(rstate: Rstate) -> list[Team]:
     return _get_org(rstate)['teams']['edges']
 
 
-def _get_org_repos(rstate):
+def _get_org_repos(rstate: Rstate) -> list[Repo]:
     return _get_org(rstate)['repositories']['edges']
 
 
-def _get_org_members(rstate):
+def _get_org_members(rstate: Rstate) -> list[Hashable]:
     return _get_org(rstate)['membersWithRole']
 
 
-def _get_x_by_y(rstate, seq_get, key, value):
+def _get_x_by_y(rstate: Rstate, seq_get, key, value):
     seq = seq_get(rstate)
     return [x for x in seq if x['node'][key] == value]
 
 
-def _get_unique_x_by_y(rstate, seq_get, key, value):
+def _get_unique_x_by_y(rstate: Rstate, seq_get, key, value):
     elems = _get_x_by_y(rstate, seq_get, key, value)
     assert len(elems) <= 1
     if elems:
@@ -36,72 +139,78 @@ def _get_unique_x_by_y(rstate, seq_get, key, value):
 # users queries
 
 
-def user_by_login(rstate, login):
+def user_by_login(rstate: Rstate, login: str) -> str:
     return _get_unique_x_by_y(rstate, users, 'login', login)
 
 
-def user_by_id(rstate, user_id):
+def _user_by_id_noexcept(rstate: Rstate, user_id) -> Optional[User]:
     return rstate['data']['users'].get(user_id)
 
 
-def users(rstate):
+def user_by_id(rstate: Rstate, user_id) -> User:
+    user = _user_by_id_noexcept(rstate, user_id)
+    assert user
+    return user
+
+
+def users(rstate: Rstate) -> Collection[User]:
     return rstate['data']['users'].values()
 
 # org queries
 
 
-def org_repositories(rstate):
+def org_repositories(rstate: Rstate) -> list[Repo]:
     return _get_org_repos(rstate)
 
 
-def org_teams(rstate):
+def org_teams(rstate: Rstate) -> list[Team]:
     return _get_org_teams(rstate)
 
 
-def org_members(rstate):
+def org_members(rstate: Rstate) -> list[User]:
     return [user_by_id(rstate, x) for x in _get_org_members(rstate)]
 
 
-def org_team_by_id(rstate, team_id):
+def org_team_by_id(rstate: Rstate, team_id) -> Team:
     return _get_unique_x_by_y(rstate, _get_org_teams, 'id', team_id)
 
 
-def org_team_by_name(rstate, name):
+def org_team_by_name(rstate: Rstate, name: str) -> Team:
     return _get_unique_x_by_y(rstate, _get_org_teams, 'name', name)
 
 
-def org_repo_by_id(rstate, repo_id):
+def org_repo_by_id(rstate: Rstate, repo_id) -> Repo:
     return _get_unique_x_by_y(rstate, _get_org_repos, 'id', repo_id)
 
 
-def org_repo_by_name(rstate, name):
+def org_repo_by_name(rstate: Rstate, name: str) -> Repo:
     return _get_unique_x_by_y(rstate, _get_org_repos, 'name', name)
 
 # repository info
 
 
-def repo_archived(repo):
+def repo_archived(repo: Repo) -> bool:
     return repo['node']['isArchived']
 
 
-def repo_forked(repo):
+def repo_forked(repo: Repo) -> bool:
     return repo['node']['isFork']
 
 
-def repo_private(repo):
+def repo_private(repo: Repo) -> bool:
     return repo['node']['isPrivate']
 
 
-def repo_name(repo):
+def repo_name(repo: Repo) -> str:
     return repo['node']['name']
 
 
-def repo_description(repo):
+def repo_description(repo: Repo) -> str:
     return repo['node']['description']
 
 
-def repo_collaborators(rstate, repo):
-    def mkobj(rstate, edge):
+def repo_collaborators(rstate: Rstate, repo: Repo):
+    def mkobj(rstate: Rstate, edge: RepoCollaboratorEdge) -> RepoCollaborator:
         return {
             'role': edge['permission'],
             'node': user_by_id(rstate, edge['node']['id'])['node']
@@ -126,16 +235,16 @@ def repo_branch_protection_rule(repo, pattern):
 # team info
 
 
-def team_name(team):
+def team_name(team: Team) -> str:
     return team['node']['name']
 
 
-def team_description(team):
+def team_description(team: Team) -> str:
     return team['node']['description']
 
 
-def team_repos(rstate, team):
-    def mkobj(rstate, edge):
+def team_repos(rstate: Rstate, team: Team) -> list[Repo]:
+    def mkobj(rstate: Rstate, edge):
         return {
             'permission': edge['permission'],
             'node': org_repo_by_id(rstate, edge['node']['id'])['node']
@@ -146,7 +255,7 @@ def team_repos(rstate, team):
     return []
 
 
-def team_members(rstate, team):
+def team_members(rstate: Rstate, team: Team) -> list[User]:
     def mkobj(rstate, edge):
         return {
             'role': edge['role'],
@@ -158,13 +267,14 @@ def team_members(rstate, team):
     return []
 
 
-def team_parent(rstate, team):
-    if team['node']['parentTeam']:
-        return org_team_by_id(rstate, team['node']['parentTeam']['id'])
+def team_parent(rstate: Rstate, team: Team) -> Optional[Team]:
+    parent_team = team['node']['parentTeam']
+    if parent_team:
+        return org_team_by_id(rstate, parent_team)
     return None
 
 
-def team_children(rstate, team):
+def team_children(rstate: Rstate, team: Team) -> list[Team]:
     def mkobj(rstate, edge):
         return {
             'node': org_team_by_id(rstate, edge['node']['id'])['node']
@@ -177,19 +287,19 @@ def team_children(rstate, team):
 # user info
 
 
-def user_name(user):
+def user_name(user: User) -> str:
     return user['node']['name']
 
 
-def user_login(user):
+def user_login(user: User) -> str:
     return user['node']['login']
 
 
-def user_email(user):
+def user_email(user: User) -> str:
     return user['node']['email']
 
 
-def user_company(user):
+def user_company(user: User) -> str:
     return user['node']['company']
 
 
@@ -238,24 +348,25 @@ def branch_protection_creator(rule):
 ###
 
 
-def _user_create(rstate, user):
+def _user_create(rstate: Rstate, user: Mapping) -> Rstate:
     assert 'node' in user
     assert 'login' in user['node'] and user['node']['login']
     assert 'id' in user['node'] and user['node']['id']
     assert 'email' in user['node']
+    assert isinstance(user['node']['id'], Hashable)
     user_id = user['node'].pop('id')
     rstate['data']['users'][user_id] = user
     return rstate
 
 
-def _org_member_create(rstate, member):
+def _org_member_create(rstate: Rstate, member: Mapping) -> Rstate:
     user_id = member['node']['id']
     rstate = _user_create(rstate, member)
     rstate['data']['organization']['membersWithRole'].append(user_id)
     return rstate
 
 
-def empty():
+def empty() -> Rstate:
     return {
         'data': {
             'users': {},
@@ -268,7 +379,7 @@ def empty():
     }
 
 
-def merge_team(old_value, new_value):
+def merge_team(old_value: Team, new_value: Mapping) -> Team:
     result = old_value
     # print('merge old:')
     # print(old_value)
@@ -363,7 +474,7 @@ def merge(rstate, alias, new_data):
             'create': lambda rstate, x: org_repositories(rstate).append(x),
         },
         'membersWithRole': {
-            'get_by_id': user_by_id,
+            'get_by_id': _user_by_id_noexcept,
             'merge': merge_members,
             'create': _org_member_create,
         }
@@ -396,18 +507,18 @@ def merge(rstate, alias, new_data):
     return rstate
 
 
-def missing_collaborators(rstate, repo):
+def missing_collaborators(rstate: Rstate, repo: Repo) -> list[str]:
     missing = []
     if 'collaborators' in repo['node'] and repo['node']['collaborators']:
         edges = repo['node']['collaborators']['edges']
         for edge in [x for x in edges if x is not None]:
             user_id = edge['node']['id']
-            if not user_by_id(rstate, user_id):
+            if not _user_by_id_noexcept(rstate, user_id):
                 missing.append(edge['node']['login'])
     return missing
 
 
-def validate(rstate):
+def validate(rstate: Rstate) -> bool:
     # * all repos referenced by teams should be known
     # * all users referenced by teams should be known
     # * all users referenced by repos should be known

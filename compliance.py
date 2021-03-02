@@ -1,5 +1,7 @@
 # https://realpython.com/primer-on-python-decorators/
 
+from typing import Optional
+
 from ghaudit import cache
 from ghaudit import config
 from ghaudit import policy
@@ -7,18 +9,18 @@ from ghaudit import schema
 from ghaudit import user_map
 
 
-def error(msg):
+def error(msg: str) -> None:
     print('Error: {}'.format(msg))
 
 
-def user_str(login, username, email):
+def user_str(login: str, username: Optional[str], email: Optional[str]) -> str:
     username_str = '("{}")'.format(username) if username else '(no username)'
     if email:
         return 'user "{}" {}, mapped as {}'.format(login, username_str, email)
     return 'user "{}" {}, not mapped'.format(login, username_str)
 
 
-def check_team_unref(rstate, conf, policy_, team):
+def check_team_unref(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team) -> bool:
     """Check if team is referenced in config
 
     Ignore teams that do not have access to repositories in scope
@@ -38,7 +40,7 @@ def check_team_unref(rstate, conf, policy_, team):
     return True
 
 
-def check_repo_unref(rstate, conf, policy_, repo):
+def check_repo_unref(rstate, conf, policy_, repo: schema.Repo) -> bool:
     """Check if repository is referenced in the policy
 
     Ignore repositories that are implicitly out of scope
@@ -51,7 +53,7 @@ def check_repo_unref(rstate, conf, policy_, repo):
     return True
 
 
-def check_repo_visibility(rstate, policy_, repo):
+def check_repo_visibility(rstate: schema.Rstate, policy_: policy.Policy, repo: schema.Repo) -> bool:
     name = schema.repo_name(repo)
     if not policy.repo_in_scope(policy_, repo) \
        or name not in policy.get_repos(policy_):
@@ -70,7 +72,7 @@ def check_repo_visibility(rstate, policy_, repo):
     return True
 
 
-def _check_team_repo_permissions(rstate, conf, policy_, team, repo):
+def _check_team_repo_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team, repo: schema.Repo) -> bool:
     name = schema.team_name(team)
     repo_name = schema.repo_name(repo)
     policy_perm = policy.team_repo_perm(conf, policy_, schema.team_name(team), repo)
@@ -96,7 +98,7 @@ def _check_team_repo_permissions(rstate, conf, policy_, team, repo):
     return True
 
 
-def check_team_permissions(rstate, conf, policy_, team):
+def check_team_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team) -> bool:
     repositories = schema.team_repos(rstate, team)
     success = True
 
@@ -108,7 +110,7 @@ def check_team_permissions(rstate, conf, policy_, team):
     return success
 
 
-def check_team_members(rstate, conf, usermap, policy_, team):
+def check_team_members(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, team: schema.Team):
     name = schema.team_name(team)
     conf_team = config.get_team(conf, name)
     success = True
@@ -134,7 +136,7 @@ def check_team_members(rstate, conf, usermap, policy_, team):
     return success
 
 
-def check_repo_collaborators(rstate, conf, usermap, policy_, repo):
+def check_repo_collaborators(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, repo: schema.Repo) -> bool:
     name = schema.repo_name(repo)
     success = True
 
@@ -174,7 +176,7 @@ def check_repo_collaborators(rstate, conf, usermap, policy_, repo):
     return success
 
 
-def check_user(rstate, conf, usermap, policy_, user):
+def check_user(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, user: schema.User) -> bool:
     login = schema.user_login(user)
     email = user_map.email(usermap, login)
     if not email:
@@ -183,7 +185,7 @@ def check_user(rstate, conf, usermap, policy_, user):
     return True
 
 
-def check_missing_repos(rstate, conf, policy_):
+def check_missing_repos(rstate: schema.Rstate, conf, policy_: policy.Policy) -> bool:
     """Check if a repository is part of the policy_, but does not exist
     """
     for repo_name in policy.get_repos(policy_):
@@ -191,7 +193,7 @@ def check_missing_repos(rstate, conf, policy_):
             print('Error: repository "{}" does not exist'.format(repo_name))
 
 
-def check_missing_teams(rstate, conf, policy_):
+def check_missing_teams(rstate: schema.Rstate, conf, policy_: policy.Policy) -> bool:
     """Check if a team is part of the policy_, but does not exist
     """
     for team in config.get_teams(conf):
@@ -200,7 +202,7 @@ def check_missing_teams(rstate, conf, policy_):
             print('Error: team "{}" does not exist'.format(name))
 
 
-def check_repo_branch_protection(rstate, conf, policy_, repo):
+def check_repo_branch_protection(rstate: schema.Rstate, conf, policy_: policy.Policy, repo: schema.Repo) -> bool:
     name = schema.repo_name(repo)
     patterns = policy.branch_protection_patterns(policy_, name)
     for pattern in patterns:
@@ -219,23 +221,23 @@ def check_repo_branch_protection(rstate, conf, policy_, repo):
                 )
 
 
-def check_all(conf, usermap, policy):
+def check_all(conf, usermap, policy_: policy.Policy):
     rstate = cache.load()
     for repo in schema.org_repositories(rstate):
-        check_repo_unref(rstate, conf, policy, repo)
+        check_repo_unref(rstate, conf, policy_, repo)
     for repo in schema.org_repositories(rstate):
-        check_repo_visibility(rstate, policy, repo)
+        check_repo_visibility(rstate, policy_, repo)
     for member in schema.org_members(rstate):
-        check_user(rstate, conf, usermap, policy, member)
+        check_user(rstate, conf, usermap, policy_, member)
     for team in schema.org_teams(rstate):
-        check_team_unref(rstate, conf, policy, team)
+        check_team_unref(rstate, conf, policy_, team)
     for team in schema.org_teams(rstate):
-        check_team_permissions(rstate, conf, policy, team)
+        check_team_permissions(rstate, conf, policy_, team)
     for team in schema.org_teams(rstate):
-        check_team_members(rstate, conf, usermap, policy, team)
+        check_team_members(rstate, conf, usermap, policy_, team)
     for repo in schema.org_repositories(rstate):
-        check_repo_collaborators(rstate, conf, usermap, policy, repo)
+        check_repo_collaborators(rstate, conf, usermap, policy_, repo)
     for repo in schema.org_repositories(rstate):
-        check_repo_branch_protection(rstate, conf, policy, repo)
-    check_missing_teams(rstate, conf, policy)
-    check_missing_repos(rstate, conf, policy)
+        check_repo_branch_protection(rstate, conf, policy_, repo)
+    check_missing_teams(rstate, conf, policy_)
+    check_missing_repos(rstate, conf, policy_)

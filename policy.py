@@ -2,34 +2,45 @@ from functools import reduce
 from collections import namedtuple
 import operator
 
+from typing import Literal
+from typing import Optional
+from typing import Mapping
+from typing import MutableMapping
+from typing import NewType
+from typing import Collection
+from typing import List
+
 from ghaudit import schema
 from ghaudit import config
 from ghaudit import user_map
 
-# todo switch to enum at least for access level
+Perm = Literal["read", "write", "admin"]
+Visibility = Literal["public", "private"]
+TeamAccessKey = NewType('TeamAccessKey', str)
+UserAccessKey = NewType('UserAccessKey', str)
 
 BranchProtectionRule = namedtuple('BranchProtectionRule', 'model mode')
 
 
 class Policy:
-    def __init__(self):
-        self._default_visibility = None     # str
-        self._repos = {}                    # repo_name -> visibility
-        self._repos_blacklist = []          # repo_name
-        self._team_access = {}              # team_name + repo_name -> access
-        self._user_access = {}              # login + repo_name -> access
-        self._branch_protection = {}        # repo_name -> (model_name, mode_
-        self._branch_protection_model = {}  # model_name -> model_data
+    def __init__(self) -> None:
+        self._default_visibility = None     # type: Optional[Visibility]
+        self._repos = {}                    # type: MutableMapping[str, Optional[Visibility]]
+        self._repos_blacklist = []          # type: List[str]
+        self._team_access = {}              # type: MutableMapping[TeamAccessKey, Perm]
+        self._user_access = {}              # type: MutableMapping[UserAccessKey, Perm]
+        self._branch_protection = {}        # type: MutableMapping[str, MutableMapping[str, BranchProtectionRule]]
+        self._branch_protection_model = {}  # type: MutableMapping[str, dict]
 
     @staticmethod
-    def team_access_key(team, repo):
-        return '{},{}'.format(team, repo)
+    def team_access_key(team: str, repo: str) -> TeamAccessKey:
+        return TeamAccessKey('{},{}'.format(team, repo))
 
     @staticmethod
-    def user_access_key(login, repo):
-        return '{},{}'.format(login, repo)
+    def user_access_key(login: str, repo: str) -> UserAccessKey:
+        return UserAccessKey('{},{}'.format(login, repo))
 
-    def add_merge_rule(self, rule):
+    def add_merge_rule(self, rule) -> None:
         # print('loading rule {}'.format(rule['name']))
         repos = rule['repositories']
         if 'team access' in rule:
@@ -45,7 +56,9 @@ class Policy:
                             self._repos[repo] = None
                         key = Policy.team_access_key(team, repo)
                         if key in self._team_access:
-                            self._team_access[key] = perm_highest(level, self._team_access[key])
+                            self._team_access[key] = perm_highest(
+                                level, self._team_access[key]
+                            )
                         else:
                             self._team_access[key] = level
 
@@ -62,11 +75,11 @@ class Policy:
                     else:
                         self._branch_protection[repo] = {pattern: value}
 
-    def add_repository_blacklist(self, repo):
+    def add_repository_blacklist(self, repo: str) -> None:
         assert repo not in self._repos
         self._repos_blacklist.append(repo)
 
-    def add_repository(self, repo_data):
+    def add_repository(self, repo_data: Mapping) -> None:
         # print('adding repo from conf: {}'.format(repo_data))
         name = repo_data['repo']
         visibility = repo_data['visibility']
@@ -76,20 +89,25 @@ class Policy:
             assert not self._repos[name] or self._repos[name] == visibility
         self._repos[name] = visibility
 
-    def set_default_visibility(self, visibility):
+    def set_default_visibility(self, visibility: Visibility) -> None:
         assert not self._default_visibility or self._default_visibility == visibility
         assert visibility in ['private', 'public']
         self._default_visibility = visibility
 
-    def sanity_check(self):
+    def sanity_check(self) -> None:
         intersection = [v for v in self._repos if v in self._repos_blacklist]
         assert not intersection
         # todo assert that either _default_visibility is not none, or that every
         # repository has an explicit visibility
-        for bprule in reduce(lambda a, b: a + list(b.values()), self._branch_protection.values(), []):
+        allbprules = reduce(
+            lambda a, b: a + list(b.values()),
+            self._branch_protection.values(),
+            []
+        ) # type: List[BranchProtectionRule]
+        for bprule in allbprules:
             assert(bprule.model in self._branch_protection_model)
 
-    def load_config(self, data):
+    def load_config(self, data) -> None:
         if 'repositories' in data:
             repos_config = data['repositories']
             if 'exceptions' in repos_config:
@@ -120,25 +138,25 @@ class Policy:
                 name = model.pop('name')
                 self._branch_protection_model[name] = model
 
-    def team_repo_perm(self, team, repo):
+    def team_repo_perm(self, team: str, repo: str) -> Optional[Perm]:
         key = Policy.team_access_key(team, repo)
         if key in self._team_access:
             return self._team_access[key]
         return None
 
-    def get_repos(self):
+    def get_repos(self) -> Collection[str]:
         return self._repos.keys()
 
-    def is_excluded(self, repo):
+    def is_excluded(self, repo: str) -> bool:
         return repo in self._repos_blacklist
 
-    def user_access(self, login, repo):
+    def user_access(self, login: str, repo: str) -> Optional[Perm]:
         key = Policy.user_access_key(login, repo)
         if key in self._user_access:
             return self._user_access[key]
         return None
 
-    def repo_visibility(self, repo):
+    def repo_visibility(self, repo: str) -> Visibility:
         visibility = self._repos[repo] if self._repos[repo] else self._default_visibility
         assert visibility
         return visibility
@@ -248,32 +266,32 @@ def branch_protection_get(policy, repo, pattern):
     return policy.branch_protection_get(repo, pattern)
 
 
-def repo_excluded(policy, repo):
+def repo_excluded(policy: Policy, repo) -> bool:
     return policy.is_excluded(schema.repo_name(repo))
 
 
-def repo_in_scope(policy, repo):
+def repo_in_scope(policy: Policy, repo) -> bool:
     return not repo_excluded(policy, repo) and not (
         schema.repo_archived(repo)
         or schema.repo_forked(repo)
     )
 
 
-def get_repos(policy):
+def get_repos(policy: Policy) -> Collection[str]:
     return policy.get_repos()
 
 
-def perm_translate(perm):
+def perm_translate(perm: str) -> Perm:
     perm_map = {
         'READ': 'read',
         'WRITE': 'write',
         'ADMIN': 'admin'
-    }
+    } # type: Mapping[str, Perm]
     return perm_map[perm]
 
 
 # chek if perm1 is higher than perm2
-def perm_higher(perm1, perm2):
+def perm_higher(perm1: Perm, perm2: Perm) -> bool:
     assert perm1 in ['read', 'write', 'admin']
     if perm1 == 'read':
         return False
@@ -283,7 +301,7 @@ def perm_higher(perm1, perm2):
     return perm2 != 'admin'
 
 
-def perm_highest(perm1, perm2):
+def perm_highest(perm1: Perm, perm2: Perm) -> Perm:
     if not perm1:
         return perm2
     if not perm2:
@@ -297,7 +315,7 @@ def perm_highest(perm1, perm2):
     return 'read'
 
 
-def team_repo_explicit_perm(conf, policy, team_name, repo):
+def team_repo_explicit_perm(conf, policy: Policy, team_name, repo) -> Optional[Perm]:
     """
     returns the permissions of a team as explicitly defined in the policy,
     without taking into account ancestors permissions
@@ -305,7 +323,7 @@ def team_repo_explicit_perm(conf, policy, team_name, repo):
     return policy.team_repo_perm(team_name, schema.repo_name(repo))
 
 
-def team_repo_effective_perm(conf, policy, conf_team, repo):
+def team_repo_effective_perm(conf, policy: Policy, conf_team, repo) -> Optional[Perm]:
     """
     returns the effective permissions of a team, taking into account
     ancestors permissions
@@ -316,7 +334,7 @@ def team_repo_effective_perm(conf, policy, conf_team, repo):
     return reduce(perm_highest, perms)
 
 
-def team_repo_perm(conf, policy, team_name, repo):
+def team_repo_perm(conf, policy: Policy, team_name: str, repo) -> Optional[Perm]:
     """
     returns the effective permission of a team if the repo
     is part of the policy.
@@ -328,9 +346,9 @@ def team_repo_perm(conf, policy, team_name, repo):
     return team_repo_effective_perm(conf, policy, conf_team, repo)
 
 
-def user_perm(conf, policy, usermap, repo, login):
+def user_perm(conf, policy: Policy, usermap, repo, login: str) -> Optional[Perm]:
     email = user_map.email(usermap, login)
-    if config.is_owner(conf, email):
+    if email and config.is_owner(conf, email):
         return 'admin'
     user_access = policy.user_access(login, schema.repo_name(repo))
     if user_access:
@@ -348,7 +366,7 @@ def user_perm(conf, policy, usermap, repo, login):
     return policy_user_perm
 
 
-def repo_visibility(policy, repo_name):
+def repo_visibility(policy: Policy, repo_name: str) -> Visibility:
     return policy.repo_visibility(repo_name)
 
 
