@@ -169,27 +169,6 @@ def perm_highest(perm1, perm2):
     return 'read'
 
 
-def _team_perm(conf, policy, conf_team):
-    perm = None
-    parent_perm = None
-    parent = config.team_parent(conf, conf_team)
-
-    if parent:
-        parent_perm = _team_perm(conf, policy, parent)
-
-    for value in ['read', 'write', 'admin']:
-        if value in policy and config.team_name(conf_team) in policy[value]:
-            perm = value
-
-    if parent_perm and perm:
-        return perm_highest(parent_perm, perm)
-    if parent_perm:
-        return parent_perm
-    if perm:
-        return perm
-    return None
-
-
 def team_repo_explicit_perm(conf, policy, team_name, repo):
     """
     returns the permissions of a team as explicitly defined in the policy,
