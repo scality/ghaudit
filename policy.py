@@ -1,10 +1,14 @@
 from functools import reduce
+from collections import namedtuple
+import operator
 
 from ghaudit import schema
 from ghaudit import config
 from ghaudit import user_map
 
 # todo switch to enum at least for access level
+
+BranchProtectionRule = namedtuple('BranchProtectionRule', 'model mode')
 
 
 class Policy:
@@ -44,8 +48,19 @@ class Policy:
                             self._team_access[key] = perm_highest(level, self._team_access[key])
                         else:
                             self._team_access[key] = level
-        # for repo in repos:
-        # add branch protection here
+
+        if 'branch protection rules' in rule:
+            for bprule in rule['branch protection rules']:
+                for repo in repos:
+                    value = BranchProtectionRule(
+                        bprule['model'], bprule['mode']
+                    )
+                    pattern = bprule['pattern']
+                    if repo in self._branch_protection:
+                        assert pattern not in self._branch_protection[repo]
+                        self._branch_protection[repo][pattern] = value
+                    else:
+                        self._branch_protection[repo] = {pattern: value}
 
     def add_repository_blacklist(self, repo):
         assert repo not in self._repos
@@ -69,6 +84,10 @@ class Policy:
     def sanity_check(self):
         intersection = [v for v in self._repos if v in self._repos_blacklist]
         assert not intersection
+        # todo assert that either _default_visibility is not none, or that every
+        # repository has an explicit visibility
+        for bprule in reduce(lambda a, b: a + list(b.values()), self._branch_protection.values(), []):
+            assert(bprule.model in self._branch_protection_model)
 
     def load_config(self, data):
         if 'repositories' in data:
@@ -96,6 +115,11 @@ class Policy:
                     assert repo not in self._repos_blacklist
                     self._user_access[key] = perm
 
+        if 'branch protection models' in data:
+            for model in data['branch protection models']:
+                name = model.pop('name')
+                self._branch_protection_model[name] = model
+
     def team_repo_perm(self, team, repo):
         key = Policy.team_access_key(team, repo)
         if key in self._team_access:
@@ -118,6 +142,110 @@ class Policy:
         visibility = self._repos[repo] if self._repos[repo] else self._default_visibility
         assert visibility
         return visibility
+
+    def branch_protection_patterns(self, repo):
+        if repo in self._branch_protection:
+            return self._branch_protection[repo].keys()
+        return []
+
+    def branch_protection_get(self, repo, pattern):
+        return self._branch_protection[repo][pattern]
+
+    def branch_protection_get_model(self, modelname):
+        return self._branch_protection_model[modelname]
+
+
+def bprule_model_approvals(model):
+    return model['requirements']['approvals']
+
+
+def bprule_model_owner_approval(model):
+    return model['requirements']['owner approval']
+
+
+def bprule_model_commit_signatures(model):
+    return model['requirements']['commit signatures']
+
+
+def bprule_model_linear_history(model):
+    return model['requirements']['linear history']
+
+
+def bprule_model_admin_enforced(model):
+    return model['requirements']['admin enforced']
+
+
+def bprule_model_restrict_pushes(model):
+    return model['restrictions']['push']['enable']
+
+
+def bprule_model_restrict_deletion(model):
+    return model['restrictions']['deletion']['enable']
+
+
+def bprule_cmp(policy, rule, modelname, mode):
+    def cmp_bool_baseline(from_rule, from_model):
+        return (from_model and from_rule) or not from_model
+    def approval_cmp_baseline(from_rule, from_model):
+        return not from_model or (from_rule >= from_model)
+    model = policy.branch_protection_get_model(modelname)
+    get_map = {
+        'approvals': (
+            schema.branch_protection_approvals,
+            bprule_model_approvals
+        ),
+        'owner approval': (
+            schema.branch_protection_owner_approval,
+            bprule_model_owner_approval
+        ),
+        'commit signatures': (
+            schema.branch_protection_owner_approval,
+            bprule_model_owner_approval
+        ),
+        'linear history': (
+            schema.branch_protection_linear_history,
+            bprule_model_linear_history
+        ),
+        'restrict pushes': (
+            schema.branch_protection_restrict_pushes,
+            bprule_model_restrict_pushes
+        ),
+        'restrict deletion': (
+            schema.branch_protection_restrict_deletion,
+            bprule_model_restrict_deletion
+        ),
+    }
+    cmp_map = {
+        'baseline': {
+            'approvals': approval_cmp_baseline,
+            'owner approval': cmp_bool_baseline,
+            'commit signatures': cmp_bool_baseline,
+            'linear history': cmp_bool_baseline,
+            'restrict pushes': cmp_bool_baseline,
+            'restrict deletion': cmp_bool_baseline,
+        },
+        'strict': {
+            'approvals': approval_cmp_baseline,
+            'owner approval': operator.eq,
+            'commit signatures': operator.eq,
+            'linear history': operator.eq,
+            'restrict pushes': operator.eq,
+            'restrict deletion': operator.eq,
+        }
+    }
+    result = []
+    for k, get in get_map.items():
+        if not cmp_map[mode][k](get[0](rule), get[1](model)):
+            result.append(k)
+    return result
+
+
+def branch_protection_patterns(policy, repo):
+    return policy.branch_protection_patterns(repo)
+
+
+def branch_protection_get(policy, repo, pattern):
+    return policy.branch_protection_get(repo, pattern)
 
 
 def repo_excluded(policy, repo):

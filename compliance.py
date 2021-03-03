@@ -200,6 +200,25 @@ def check_missing_teams(rstate, conf, policy_):
             print('Error: team "{}" does not exist'.format(name))
 
 
+def check_repo_branch_protection(rstate, conf, policy_, repo):
+    name = schema.repo_name(repo)
+    patterns = policy.branch_protection_patterns(policy_, name)
+    for pattern in patterns:
+        rstate_value = schema.repo_branch_protection_rule(repo, pattern)
+        if not rstate_value:
+            error(
+                'missing branch protection rule with pattern "{}" for repository "{}"'
+                .format(pattern, name))
+        else:
+            rule = policy.branch_protection_get(policy_, name, pattern)
+            result = policy.bprule_cmp(policy_, rstate_value, rule.model, rule.mode)
+            if result:
+                error(
+                    'mismatched branch protection rule with for repository "{}" and pattern "{}". differences: {}'
+                    .format(name, pattern, result)
+                )
+
+
 def check_all(conf, usermap, policy):
     rstate = cache.load()
     for repo in schema.org_repositories(rstate):
@@ -216,5 +235,7 @@ def check_all(conf, usermap, policy):
         check_team_members(rstate, conf, usermap, policy, team)
     for repo in schema.org_repositories(rstate):
         check_repo_collaborators(rstate, conf, usermap, policy, repo)
+    for repo in schema.org_repositories(rstate):
+        check_repo_branch_protection(rstate, conf, policy, repo)
     check_missing_teams(rstate, conf, policy)
     check_missing_repos(rstate, conf, policy)
