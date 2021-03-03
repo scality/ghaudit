@@ -8,6 +8,7 @@ from ghaudit import auth
 from ghaudit import config
 from ghaudit import ui
 from ghaudit import policy
+from ghaudit import user_map
 
 
 @click.group()
@@ -146,6 +147,39 @@ def org_repositories_count():
     rstate = cache.load()
     repos = schema.org_repositories(rstate)
     print(len(repos))
+
+
+@org_repositories_group.command('branch-protection')
+@click.option('--format', 'mode',
+              type=click.Choice(['basic', 'json', 'table']),
+              default='basic')
+@click.argument('name')
+@click.pass_context
+def org_repositories_branch_protection(ctx, name, mode):
+    rstate = cache.load()
+    usermap = ctx.obj['usermap']
+    repo = schema.org_repo_by_name(rstate, name)
+    _common_list(
+        lambda _: schema.repo_branch_protection_rules(repo), mode,
+        ui.Formatter(
+            (('pattern', 20), ('creator', 40), ('admin enforced', 14), ('approvals', 9),
+             ('owner approval', 14), ('commit signatures', 17),
+             ('linear history', 14), ('restrict pushes', 15),
+             ('restrict deletion', 17)),
+            lambda x: (
+                (schema.branch_protection_pattern(x), 20),
+                (user_map.email(usermap, schema.branch_protection_creator(x)), 40),
+                (schema.branch_protection_admin_enforced(x), 14),
+                (schema.branch_protection_approvals(x), 9),
+                (schema.branch_protection_owner_approval(x), 14),
+                (schema.branch_protection_commit_signatures(x), 17),
+                (schema.branch_protection_linear_history(x), 14),
+                (schema.branch_protection_restrict_pushes(x), 15),
+                (schema.branch_protection_restrict_deletion(x), 17),
+            ),
+            schema.branch_protection_pattern
+        )
+    )
 
 
 @org_group.group('members')
@@ -344,3 +378,8 @@ def user_show(login):
               schema.user_company(user),
               teams()
           ))
+
+
+@cli.command('test')
+def test():
+    policy.test()
