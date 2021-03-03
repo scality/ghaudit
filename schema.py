@@ -111,6 +111,18 @@ def repo_collaborators(rstate, repo):
         return [mkobj(rstate, x) for x in collaborators if x is not None]
     return []
 
+def repo_branch_protection_rules(repo):
+    return repo['node']['branchProtectionRules']['nodes']
+
+
+def repo_branch_protection_rule(repo, pattern):
+    rules = repo_branch_protection_rules(repo)
+    elems = [x for x in rules if branch_protection_pattern(x) == pattern]
+    assert len(elems) <= 1
+    if elems:
+        return elems[0]
+    return None
+
 # team info
 
 
@@ -179,6 +191,49 @@ def user_email(user):
 
 def user_company(user):
     return user['node']['company']
+
+
+# def user_is_owner(user):
+#     return 'role' in user and user['role'] == 'ADMIN'
+
+# branch protection rules
+
+def branch_protection_pattern(rule):
+    return rule['pattern']
+
+
+def branch_protection_admin_enforced(rule):
+    return rule['isAdminEnforced']
+
+
+def branch_protection_approvals(rule):
+    if rule['requiresApprovingReviews']:
+        return rule['requiredApprovingReviewCount']
+    return 0
+
+
+def branch_protection_owner_approval(rule):
+    return rule['requiresCodeOwnerReviews']
+
+
+def branch_protection_commit_signatures(rule):
+    return rule['requiresCommitSignatures']
+
+
+def branch_protection_linear_history(rule):
+    return rule['requiresLinearHistory']
+
+
+def branch_protection_restrict_pushes(rule):
+    return rule['restrictsPushes']
+
+
+def branch_protection_restrict_deletion(rule):
+    return not rule['allowsDeletions']
+
+
+def branch_protection_creator(rule):
+    return rule['creator']['login']
 
 ###
 
@@ -269,7 +324,19 @@ def merge_repo(old_value, new_value):
         for item in new_value['node']['collaborators']['edges']:
             if item:
                 collaborators['edges'].append(item)
+
+    if 'branchProtectionRules' in old_value['node']:
+        branch_protection_rules = old_value['node']['branchProtectionRules']
+    else:
+        branch_protection_rules = {'nodes': []}
+    if 'branchProtectionRules' in new_value['node'] \
+       and new_value['node']['branchProtectionRules']:
+        for item in new_value['node']['branchProtectionRules']['nodes']:
+            if item:
+                branch_protection_rules['nodes'].append(item)
+
     result['node']['collaborators'] = collaborators
+    result['node']['branchProtectionRules'] = branch_protection_rules
     # print('merge result:')
     # print(result)
     return result
