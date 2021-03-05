@@ -2,26 +2,8 @@ from functools import reduce
 from collections import namedtuple
 import json
 
-from ghaudit import schema
-
 
 Formatter = namedtuple('Formatter', 'table_fields to_fields to_string')
-
-
-def _user_table_info(user=None):
-    if user:
-        return (
-            (schema.user_login(user), 30),
-            (schema.user_name(user), 30),
-            (schema.user_company(user), 30),
-            (schema.user_email(user), 30),
-        )
-    return (
-        ('login', 30),
-        ('name', 30),
-        ('company', 30),
-        ('email', 30),
-    )
 
 
 def _print_list_basic(elems, fmt):
