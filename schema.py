@@ -220,8 +220,15 @@ def repo_collaborators(rstate: Rstate, repo: Repo):
         return [mkobj(rstate, x) for x in collaborators if x is not None]
     return []
 
+
 def repo_branch_protection_rules(repo):
     return repo['node']['branchProtectionRules']['nodes']
+
+
+def _repo_branch_protection_rules_noexcept(repo):
+    if 'branchProtectionRules' in repo['node']:
+        return repo_branch_protection_rules(repo)
+    return None
 
 
 def repo_branch_protection_rule(repo, pattern):
@@ -308,6 +315,11 @@ def user_company(user: User) -> str:
 
 # branch protection rules
 
+
+def branch_protection_id(rule):
+    return rule['id']
+
+
 def branch_protection_pattern(rule):
     return rule['pattern']
 
@@ -344,6 +356,42 @@ def branch_protection_restrict_deletion(rule):
 
 def branch_protection_creator(rule):
     return rule['creator']['login']
+
+
+def branch_protection_push_allowances(rule):
+    return rule['pushAllowances']
+
+
+def push_allowance_actor(allowance):
+    return allowance['actor']
+
+###
+
+def actor_type(actor):
+    return actor['__typename']
+
+
+def actor_get_user(rstate, actor):
+    return user_by_id(rstate, actor['id'])
+
+
+def actor_get_team(rstate, actor):
+    return org_team_by_id(rstate, actor['id'])
+
+
+def actor_get_app(rstate, actor):
+    raise NotImplementedError()
+
+###
+
+def all_bp_rules(rstate: Rstate):
+    result = set()
+    for repo in org_repositories(rstate):
+        bprules = _repo_branch_protection_rules_noexcept(repo)
+        if bprules:
+            for bprule in bprules:
+                result.add(branch_protection_id(bprule))
+    return result
 
 ###
 
@@ -444,6 +492,7 @@ def merge_repo(old_value, new_value):
        and new_value['node']['branchProtectionRules']:
         for item in new_value['node']['branchProtectionRules']['nodes']:
             if item:
+                item['pushAllowances'] = []
                 branch_protection_rules['nodes'].append(item)
 
     result['node']['collaborators'] = collaborators
@@ -452,6 +501,17 @@ def merge_repo(old_value, new_value):
     # print(result)
     return result
 
+
+def merge_repo_branch_protection(repo, push_allowance):
+    assert 'branchProtectionRules' in repo['node']
+    bprule_id = push_allowance['branchProtectionRule']['id']
+    # del push_allowance['branchProtectionRule']
+    bprule = [x for x in repo_branch_protection_rules(repo) if x['id'] == bprule_id][0]
+    rules_filtered = [x for x in repo_branch_protection_rules(repo) if x['id'] != bprule_id]
+    bprule['pushAllowances'].append(push_allowance)
+    rules_filtered.append(bprule)
+    repo['node']['branchProtectionRules']['nodes'] = rules_filtered
+    return repo
 
 def merge_members(old_value, new_value):
     # print('merge old:')
@@ -495,6 +555,17 @@ def merge(rstate, alias, new_data):
                     rstate['data']['organization'][key]['edges'] = new_list
                 else:
                     funcs[key]['create'](rstate, item)
+        if 'pushAllowances' in new_data['data']['organization']:
+            print('found push allowances')
+            for item in new_data['data']['organization']['pushAllowances']['nodes']:
+                repo = org_repo_by_id(
+                    rstate, item['branchProtectionRule']['repository']['id']
+                )
+                edges = rstate['data']['organization']['repositories']['edges']
+                new_list = [x for x in edges
+                                if x['node']['id'] != repo['node']['id']]
+                new_list.append(merge_repo_branch_protection(repo, item))
+                rstate['data']['organization']['repositories']['edges'] = new_list
     if 'repository' in new_data['data']['organization']:
         repo = new_data['data']['organization']['repository']
         edges = rstate['data']['organization']['repositories']['edges']

@@ -213,7 +213,7 @@ def check_repo_branch_protection(rstate: schema.Rstate, conf, policy_: policy.Po
                 .format(pattern, name))
         else:
             rule = policy.branch_protection_get(policy_, name, pattern)
-            result = policy.bprule_cmp(policy_, rstate_value, rule.model, rule.mode)
+            result = policy.bprule_cmp(rstate, policy_, rstate_value, rule.model, rule.mode)
             if result:
                 error(
                     'mismatched branch protection rule with for repository "{}" and pattern "{}". differences: {}'

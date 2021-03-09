@@ -197,11 +197,84 @@ def bprule_model_restrict_pushes(model):
     return model['restrictions']['push']['enable']
 
 
+def bprule_model_push_allowances(model):
+    return model['restrictions']['push']['exceptions']
+
+
+def bprule_model_push_allowance_type(push_allowance):
+    return push_allowance['type']
+
+
+def bprule_model_push_allowance_user_login(push_allowance):
+    return push_allowance['login']
+
+
+def bprule_model_push_allowance_team_name(push_allowance):
+    return push_allowance['name']
+
+
+def bprule_model_push_allowance_app_name(push_allowance):
+    return push_allowance['name']
+
+
 def bprule_model_restrict_deletion(model):
     return model['restrictions']['deletion']['enable']
 
 
-def bprule_cmp(policy, rule, modelname, mode):
+def cmp_actor(rstate, from_rule, from_model):
+    get_map = {
+        'User': (
+            lambda x: schema.user_login(schema.actor_get_user(rstate, x)),
+            lambda x: bprule_model_push_allowance_user_login(x)
+        ),
+        'Team': (
+            lambda x: schema.team_name(schema.actor_get_team(rstate, x)),
+            lambda x: bprule_model_push_allowance_team_name(x)
+        ),
+        # TODO support app
+        # 'App': (
+        #     lambda x: ,
+        #     lambda x: bprule_model_push_allowance_app_name(x)
+        # ),
+    }
+    actor_from_rule = schema.push_allowance_actor(from_rule)
+    from_rule_type = schema.actor_type(actor_from_rule)
+    from_model_type = bprule_model_push_allowance_type(from_model)
+    # print(
+    #     'comparing {} and {}'.format({
+    #         'User': schema.actor_get_user,
+    #         'Team': schema.actor_get_team,
+    #         }[from_rule_type](rstate, actor_from_rule), from_model
+    #     )
+    # )
+    if from_rule_type == from_model_type:
+        getters = get_map[from_model_type]
+        return getters[0](actor_from_rule) == getters[1](from_model)
+    return False
+
+
+def cmp_actors_baseline(rstate, from_rules, from_models):
+    print('cmp baseline from models: {}'.format(from_models))
+    print('cmp baseline from rules: {}'.format(from_rules))
+    to_check = set([tuple(x.items()) for x in from_models])
+    for from_rule in from_rules:
+        matched = reduce(
+            lambda accum, x: accum or x if cmp_actor(rstate, from_rule, {y[0]:y[1] for y in x}) else None,
+            to_check,
+            None
+        )
+        if matched:
+            to_check.remove(matched)
+    return not to_check
+
+
+def cmp_actors_strict(rstate, from_rules, from_models):
+    if len(from_rules) != len(from_models):
+        return False
+    return cmp_actors_baseline(rstate, from_rules, from_models)
+
+
+def bprule_cmp(rstate, policy, rule, modelname, mode):
     def cmp_bool_baseline(from_rule, from_model):
         return (from_model and from_rule) or not from_model
     def approval_cmp_baseline(from_rule, from_model):
@@ -232,6 +305,10 @@ def bprule_cmp(policy, rule, modelname, mode):
             schema.branch_protection_restrict_deletion,
             bprule_model_restrict_deletion
         ),
+        'push allowances': (
+            schema.branch_protection_push_allowances,
+            bprule_model_push_allowances
+        ),
     }
     cmp_map = {
         'baseline': {
@@ -241,6 +318,7 @@ def bprule_cmp(policy, rule, modelname, mode):
             'linear history': cmp_bool_baseline,
             'restrict pushes': cmp_bool_baseline,
             'restrict deletion': cmp_bool_baseline,
+            'push allowances': lambda a, b: cmp_actors_baseline(rstate, a, b),
         },
         'strict': {
             'approvals': approval_cmp_baseline,
@@ -249,6 +327,7 @@ def bprule_cmp(policy, rule, modelname, mode):
             'linear history': operator.eq,
             'restrict pushes': operator.eq,
             'restrict deletion': operator.eq,
+            'push allowances': lambda a, b: cmp_actors_strict(rstate, a, b),
         }
     }
     result = []

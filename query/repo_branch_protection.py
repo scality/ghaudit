@@ -12,6 +12,7 @@ fragment repo{{ num }}BranchProtectionRulesFields on Repository {
       ...pageInfoFields
     }
     nodes {
+      id
       allowsDeletions
       allowsForcePushes
       creator {
