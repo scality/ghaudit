@@ -310,8 +310,8 @@ def user_company(user: User) -> str:
     return user['node']['company']
 
 
-# def user_is_owner(user):
-#     return 'role' in user and user['role'] == 'ADMIN'
+def user_is_owner(user):
+    return 'role' in user and user['role'] == 'ADMIN'
 
 # branch protection rules
 

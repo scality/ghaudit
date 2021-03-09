@@ -177,12 +177,29 @@ def check_repo_collaborators(rstate: schema.Rstate, conf, usermap, policy_: poli
 
 
 def check_user(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, user: schema.User) -> bool:
+    result = True
     login = schema.user_login(user)
     email = user_map.email(usermap, login)
     if not email:
         error('user login "{}" is not mapped.'.format(login))
-        return False
-    return True
+        result = False
+    if schema.user_is_owner(user):
+        if not email:
+            error('{} should not be an organisation owner'.format(
+                user_str(login, schema.user_name(user), email)
+            ))
+            result = False
+        elif not config.is_owner(conf, email):
+            error('{} should not be an organisation owner'.format(
+                user_str(login, schema.user_name(user), email)
+            ))
+            result = False
+    if not schema.user_is_owner(user) and email and config.is_owner(conf, email):
+        error('{} should be an organisation owner'.format(
+            user_str(login, schema.user_name(user), email)
+        ))
+        result = False
+    return result
 
 
 def check_missing_repos(rstate: schema.Rstate, conf, policy_: policy.Policy) -> bool:

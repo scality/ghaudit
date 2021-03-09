@@ -21,6 +21,7 @@ fragment membersWithRole on Query {
         ...pageInfoFields
       }
       edges {
+        role
         node {
           ...userFields
         }
