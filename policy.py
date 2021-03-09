@@ -190,7 +190,7 @@ def bprule_model_linear_history(model):
 
 
 def bprule_model_admin_enforced(model):
-    return model['requirements']['admin enforced']
+    return model['admin enforced']
 
 
 def bprule_model_restrict_pushes(model):
@@ -309,6 +309,10 @@ def bprule_cmp(rstate, policy, rule, modelname, mode):
             schema.branch_protection_push_allowances,
             bprule_model_push_allowances
         ),
+        'admin enforced': (
+            schema.branch_protection_admin_enforced,
+            bprule_model_admin_enforced
+        ),
     }
     cmp_map = {
         'baseline': {
@@ -319,6 +323,7 @@ def bprule_cmp(rstate, policy, rule, modelname, mode):
             'restrict pushes': cmp_bool_baseline,
             'restrict deletion': cmp_bool_baseline,
             'push allowances': lambda a, b: cmp_actors_baseline(rstate, a, b),
+            'admin enforced': cmp_bool_baseline,
         },
         'strict': {
             'approvals': approval_cmp_baseline,
@@ -328,6 +333,7 @@ def bprule_cmp(rstate, policy, rule, modelname, mode):
             'restrict pushes': operator.eq,
             'restrict deletion': operator.eq,
             'push allowances': lambda a, b: cmp_actors_strict(rstate, a, b),
+            'admin enforced': operator.eq
         }
     }
     result = []
