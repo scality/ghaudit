@@ -1,7 +1,6 @@
 
 from ghaudit.query.sub_query_common import SubQueryCommon
 
-
 class TeamMemberQuery(SubQueryCommon):
     FRAG_TEAM_MEMBER_EDGE = """
 fragment team{{ num }}MemberRole on Team {
@@ -23,12 +22,8 @@ fragment team{{ num }}MemberRole on Team {
     FRAG_TEAM_MEMBER_ENTRY = """
 fragment teamMember{{ num }} on Query {
   team{{ num }} : organization(login: $organisation) {
-    teams(first: 1, query: "{{ team }}") {
-      edges {
-        node {
-          ...team{{ num }}MemberRole
-        }
-      }
+    team(slug: "{{ team }}") {
+      ...team{{ num }}MemberRole
     }
   }
 }
@@ -48,10 +43,10 @@ fragment teamMember{{ num }} on Query {
     def update_page_info(self, response):
         root = 'team{}'.format(self._num)
         cursor_name = 'team{}MemberCursor'.format(self._num)
-        if root in response and 'teams' in response[root]:
+        if root in response and 'team' in response[root]:
             if not self._page_info:
                 self._params[cursor_name] = 'String!'
-            page_info = response[root]['teams']['edges'][0]['node']['members']['pageInfo']
+            page_info = response[root]['team']['members']['pageInfo']
             self._page_info = page_info
             self._values[cursor_name] = self._page_info['endCursor']
             self._count += 1

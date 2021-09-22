@@ -7,6 +7,7 @@ class OrgTeamsQuery(SubQueryCommon):
 fragment teamFields on Team {
   id
   name
+  slug
   description
   privacy
   parentTeam {
@@ -41,7 +42,7 @@ fragment teams on Query {
         )
 
     def update_page_info(self, response):
-        if 'root' in response and 'teams' in response['root']:
+        if 'root' in response and response['root'] and 'teams' in response['root']:
             if not self._page_info:
                 self._params['teamsCursor'] = 'String!'
             self._page_info = response['root']['teams']['pageInfo']

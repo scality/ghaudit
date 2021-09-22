@@ -112,7 +112,7 @@ def _sync(config, auth_driver):
             name = schema.team_name(team)
             query.append(TeamRepoQuery(name, workaround2['team'], 40))
             workaround2['team'] += 1
-            query.append(TeamMemberQuery(name, workaround2['team'], 40))
+            query.append(TeamMemberQuery(team['node']['slug'], workaround2['team'], 40))
             workaround2['team'] += 1
             found['teams'].append(name)
             query.append(TeamChildrenQuery(name, workaround2['team'], 40))

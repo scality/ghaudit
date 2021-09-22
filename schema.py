@@ -575,6 +575,9 @@ def merge(rstate, alias, new_data):
             merge_repo(org_repo_by_id(rstate, repo['id']), {'node': repo})
         )
         rstate['data']['organization']['repositories']['edges'] = new_list
+    if 'team' in new_data['data']['organization']:
+        team = new_data['data']['organization']['team']
+        merge_team(org_team_by_id(rstate, team['id']), {'node': team})
     return rstate
 
 
