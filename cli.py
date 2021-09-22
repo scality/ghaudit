@@ -363,6 +363,23 @@ def user_show(login):
               teams()
           ))
 
+@cli.group('usermap')
+def usermap_group():
+    pass
+
+
+@usermap_group.command('get-login')
+@click.argument('email')
+@click.pass_context
+def usermap_get_login(ctx, email):
+    print(user_map.login(ctx.obj['usermap'], email))
+
+
+@usermap_group.command('get-email')
+@click.argument('login')
+@click.pass_context
+def usermap_get_email(ctx, login):
+    print(user_map.email(ctx.obj['usermap'], login))
 
 @cli.command('test')
 def test():
