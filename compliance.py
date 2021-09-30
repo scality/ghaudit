@@ -72,7 +72,7 @@ def check_repo_visibility(rstate: schema.Rstate, policy_: policy.Policy, repo: s
     return True
 
 
-def _check_team_repo_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team, repo: schema.Repo) -> bool:
+def _check_team_repo_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team, repo: schema.RepoWithPerms) -> bool:
     name = schema.team_name(team)
     repo_name = schema.repo_name(repo)
     policy_perm = policy.team_repo_perm(conf, policy_, schema.team_name(team), repo)

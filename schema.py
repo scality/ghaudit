@@ -84,6 +84,10 @@ class RepoNode(TypedDict):
 class Repo(TypedDict):
     node: RepoNode
 
+class RepoWithPerms(TypedDict):
+    node: RepoNode
+    permission: str
+
 class RepoEdges(TypedDict):
     edges: List[Repo]
 
@@ -112,15 +116,15 @@ def _get_org(rstate: Rstate) -> Organisation:
     return _get_root(rstate)['organization']
 
 
-def _get_org_teams(rstate: Rstate) -> list[Team]:
+def _get_org_teams(rstate: Rstate) -> List[Team]:
     return _get_org(rstate)['teams']['edges']
 
 
-def _get_org_repos(rstate: Rstate) -> list[Repo]:
+def _get_org_repos(rstate: Rstate) -> List[Repo]:
     return _get_org(rstate)['repositories']['edges']
 
 
-def _get_org_members(rstate: Rstate) -> list[Hashable]:
+def _get_org_members(rstate: Rstate) -> List[Hashable]:
     return _get_org(rstate)['membersWithRole']
 
 
@@ -159,15 +163,15 @@ def users(rstate: Rstate) -> Collection[User]:
 # org queries
 
 
-def org_repositories(rstate: Rstate) -> list[Repo]:
+def org_repositories(rstate: Rstate) -> List[Repo]:
     return _get_org_repos(rstate)
 
 
-def org_teams(rstate: Rstate) -> list[Team]:
+def org_teams(rstate: Rstate) -> List[Team]:
     return _get_org_teams(rstate)
 
 
-def org_members(rstate: Rstate) -> list[User]:
+def org_members(rstate: Rstate) -> List[User]:
     return [user_by_id(rstate, x) for x in _get_org_members(rstate)]
 
 
@@ -250,7 +254,7 @@ def team_description(team: Team) -> str:
     return team['node']['description']
 
 
-def team_repos(rstate: Rstate, team: Team) -> list[Repo]:
+def team_repos(rstate: Rstate, team: Team) -> List[RepoWithPerms]:
     def mkobj(rstate: Rstate, edge):
         return {
             'permission': edge['permission'],
@@ -262,7 +266,7 @@ def team_repos(rstate: Rstate, team: Team) -> list[Repo]:
     return []
 
 
-def team_members(rstate: Rstate, team: Team) -> list[User]:
+def team_members(rstate: Rstate, team: Team) -> List[User]:
     def mkobj(rstate, edge):
         return {
             'role': edge['role'],
@@ -281,7 +285,7 @@ def team_parent(rstate: Rstate, team: Team) -> Optional[Team]:
     return None
 
 
-def team_children(rstate: Rstate, team: Team) -> list[Team]:
+def team_children(rstate: Rstate, team: Team) -> List[Team]:
     def mkobj(rstate, edge):
         return {
             'node': org_team_by_id(rstate, edge['node']['id'])['node']
@@ -294,7 +298,7 @@ def team_children(rstate: Rstate, team: Team) -> list[Team]:
 # user info
 
 
-def user_name(user: User) -> str:
+def user_name(user: User) -> Optional[str]:
     return user['node']['name']
 
 
@@ -581,7 +585,7 @@ def merge(rstate, alias, new_data):
     return rstate
 
 
-def missing_collaborators(rstate: Rstate, repo: Repo) -> list[str]:
+def missing_collaborators(rstate: Rstate, repo: Repo) -> List[str]:
     missing = []
     if 'collaborators' in repo['node'] and repo['node']['collaborators']:
         edges = repo['node']['collaborators']['edges']

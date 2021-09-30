@@ -4,10 +4,12 @@ from functools import reduce
 
 from typing import Collection
 from typing import Optional
+from typing import List
+from typing import Set
 from typing_extensions import TypedDict
 
-Team = TypedDict('Team', {'name': str, 'members': list[str], 'children': list[str]})
-Organisation = TypedDict('Organisation', {'name': str, 'owners': list[str], 'teams': list[Team]})
+Team = TypedDict('Team', {'name': str, 'members': List[str], 'children': List[str]})
+Organisation = TypedDict('Organisation', {'name': str, 'owners': List[str], 'teams': List[Team]})
 Config = TypedDict('Config', {'organisation': Organisation})
 
 
@@ -36,7 +38,7 @@ def team_direct_members(team: Team) -> Collection[str]:
 
 
 # effective members of a team (direct members + members of descendants teams)
-def team_effective_members(config: Config, team: Team) -> set[str]:
+def team_effective_members(config: Config, team: Team) -> Set[str]:
     return reduce(
         lambda acc, child: acc | set(team_direct_members(child)),
         [get_team(config, x) for x in team_descendants(config, team)],
@@ -50,7 +52,7 @@ def team_children(team: Team) -> Collection[str]:
     return []
 
 
-def team_descendants(config: Config, team: Team) -> set[str]:
+def team_descendants(config: Config, team: Team) -> Set[str]:
     def reduce_function(acc, child_name):
         child_team = get_team(config, child_name)
         return acc | set(team_descendants(config, child_team)) | {child_name}
@@ -74,7 +76,7 @@ def team_parent(config: Config, team: Team) -> Optional[Team]:
     return None
 
 
-def team_ancestors(config: Config, team: Team) -> set[str]:
+def team_ancestors(config: Config, team: Team) -> Set[str]:
     ancestors = set()
     parents = team_parents(config, team)
     for team in parents:

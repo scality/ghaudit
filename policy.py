@@ -419,7 +419,7 @@ def team_repo_effective_perm(conf, policy: Policy, conf_team, repo) -> Optional[
     return reduce(perm_highest, perms)
 
 
-def team_repo_perm(conf, policy: Policy, team_name: str, repo) -> Optional[Perm]:
+def team_repo_perm(conf, policy: Policy, team_name: str, repo: schema.Repo) -> Optional[Perm]:
     """
     returns the effective permission of a team if the repo
     is part of the policy.
