@@ -5,6 +5,7 @@ from typing import Mapping
 from typing import Collection
 from typing import List
 from typing_extensions import TypedDict
+import logging
 
 class TeamMemberNode(TypedDict):
     id: Hashable
@@ -433,10 +434,9 @@ def empty() -> Rstate:
 
 def merge_team(old_value: Team, new_value: Mapping) -> Team:
     result = old_value
-    # print('merge old:')
-    # print(old_value)
-    # print('merge new:')
-    # print(new_value)
+    logging.debug('merging teams old: {}, new: {}'.format(
+        old_value, new_value
+    ))
     if 'repositories' in old_value['node']:
         repositories = old_value['node']['repositories']
     else:
@@ -459,25 +459,21 @@ def merge_team(old_value: Team, new_value: Mapping) -> Team:
             if item:
                 members['edges'].append(item)
     if 'childTeams' in new_value['node'] and new_value['node']['childTeams']:
-        # print(new_value)
         for item in new_value['node']['childTeams']['edges']:
             if item:
-                # print('adding {}'.format(item))
                 children['edges'].append(item)
     result['node']['repositories'] = repositories
     result['node']['members'] = members
     result['node']['childTeams'] = children
-    # print('merge result:')
-    # print(result)
+    logging.debug('merged team result: {}'.format(result))
     return result
 
 
 def merge_repo(old_value, new_value):
     result = old_value
-    # print('merge old:')
-    # print(old_value)
-    # print('merge new:')
-    # print(new_value)
+    logging.debug('merging repo old: {}, new: {}'.format(
+        old_value, new_value
+    ))
     if 'collaborators' in old_value['node']:
         collaborators = old_value['node']['collaborators']
     else:
@@ -501,8 +497,7 @@ def merge_repo(old_value, new_value):
 
     result['node']['collaborators'] = collaborators
     result['node']['branchProtectionRules'] = branch_protection_rules
-    # print('merge result:')
-    # print(result)
+    logging.debug('merged repo result: {}'.format(result))
     return result
 
 
@@ -560,7 +555,6 @@ def merge(rstate, alias, new_data):
                 else:
                     funcs[key]['create'](rstate, item)
         if 'pushAllowances' in new_data['data']['organization']:
-            print('found push allowances')
             for item in new_data['data']['organization']['pushAllowances']['nodes']:
                 repo = org_repo_by_id(
                     rstate, item['branchProtectionRule']['repository']['id']

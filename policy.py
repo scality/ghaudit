@@ -1,6 +1,7 @@
 from functools import reduce
 from collections import namedtuple
 import operator
+import logging
 
 from typing import Literal
 from typing import Optional
@@ -41,14 +42,15 @@ class Policy:
         return UserAccessKey('{},{}'.format(login, repo))
 
     def add_merge_rule(self, rule) -> None:
-        # print('loading rule {}'.format(rule['name']))
+        logging.debug('loading rule {}'.format(rule['name']))
         repos = rule['repositories']
         if 'team access' in rule:
             for level, teams in rule['team access'].items():
                 assert level in ['read', 'write', 'admin']
-                # print('adding rule part: name={} level={} teams={} repos={}'.format(
-                #     rule['name'], level, teams, repos
-                # ))
+                logging.debug(
+                    'adding rule part: name={} level={} for {} teams to {} repos'.format(
+                    rule['name'], level, len(teams), len(repos)
+                ))
                 for team in teams:
                     for repo in repos:
                         assert repo not in self._repos_blacklist
@@ -80,7 +82,6 @@ class Policy:
         self._repos_blacklist.append(repo)
 
     def add_repository(self, repo_data: Mapping) -> None:
-        # print('adding repo from conf: {}'.format(repo_data))
         name = repo_data['repo']
         visibility = repo_data['visibility']
         assert visibility in ['public', 'private']
@@ -240,13 +241,13 @@ def cmp_actor(rstate, from_rule, from_model):
     actor_from_rule = schema.push_allowance_actor(from_rule)
     from_rule_type = schema.actor_type(actor_from_rule)
     from_model_type = bprule_model_push_allowance_type(from_model)
-    # print(
-    #     'comparing {} and {}'.format({
-    #         'User': schema.actor_get_user,
-    #         'Team': schema.actor_get_team,
-    #         }[from_rule_type](rstate, actor_from_rule), from_model
-    #     )
-    # )
+    logging.debug(
+        'comparing {} and {}'.format({
+            'User': schema.actor_get_user,
+            'Team': schema.actor_get_team,
+            }[from_rule_type](rstate, actor_from_rule), from_model
+        )
+    )
     if from_rule_type == from_model_type:
         getters = get_map[from_model_type]
         return getters[0](actor_from_rule) == getters[1](from_model)
@@ -254,8 +255,7 @@ def cmp_actor(rstate, from_rule, from_model):
 
 
 def cmp_actors_baseline(rstate, from_rules, from_models):
-    print('cmp baseline from models: {}'.format(from_models))
-    print('cmp baseline from rules: {}'.format(from_rules))
+    logging.debug('cmp baseline models: {}, rules: {}'.format(from_models, from_rules))
     to_check = set([tuple(x.items()) for x in from_models])
     for from_rule in from_rules:
         matched = reduce(
