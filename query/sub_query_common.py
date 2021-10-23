@@ -23,6 +23,9 @@ class SubQueryCommon(SubQuery):
         template = ''.join(self._fragments)
         return jinja2.Template(template).render(args)
 
+    def update_page_info(self, response):
+        raise NotImplementedError('abstract function call')
+
     def params_values(self):
         return self._values
 

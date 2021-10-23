@@ -20,34 +20,44 @@ UserID = Hashable
 TeamID = Hashable
 RepoID = Hashable
 
+
 class TeamMemberNode(TypedDict):
     id: UserID
+
 
 class TeamMemberEdge(TypedDict):
     node: TeamMemberNode
     role: TeamRole
 
+
 class TeamMemberEdges(TypedDict):
     edges: List[TeamMemberEdge]
 
+
 class TeamRepoNode(TypedDict):
     id: Hashable
+
 
 class TeamRepoEdge(TypedDict):
     node: TeamRepoNode
     permission: str
 
+
 class TeamRepoEdges(TypedDict):
     edges: List[TeamRepoEdge]
+
 
 class TeamRef(TypedDict):
     id: Hashable
 
+
 class ChildTeam(TypedDict):
     node: TeamRef
 
+
 class ChildTeams(TypedDict):
     edges: List[ChildTeam]
+
 
 class TeamNode(TypedDict):
     id: TeamID
@@ -58,11 +68,14 @@ class TeamNode(TypedDict):
     parentTeam: Optional[TeamRef]
     childTeams: ChildTeams
 
+
 class Team(TypedDict):
     node: TeamNode
 
+
 class TeamEdges(TypedDict):
     edges: List[Team]
+
 
 class UserNode(TypedDict):
     id: UserID
@@ -71,47 +84,60 @@ class UserNode(TypedDict):
     email: str
     company: str
 
+
 class User(TypedDict):
     node: UserNode
 
+
 class UserWithRole(User):
     role: TeamRole
+
 
 class RepoCollaborator(TypedDict):
     # todo be more specific
     role: str
     node: UserNode
 
+
 class RepoCollaboratorNode(TypedDict):
     id: Hashable
     login: str
+
 
 class RepoCollaboratorEdge(TypedDict):
     node: RepoCollaboratorNode
     permission: str
 
+
 class RepoCollaboratorEdges(TypedDict):
     edges: List[RepoCollaboratorEdge]
 
+
 ActorType = Literal['User', 'Team']
+
 
 class Actor(TypedDict):
     id: Hashable
     __typename: ActorType
 
+
 BranchProtectionRuleID = Hashable
+
 
 class BPRReferenceRepoID:
     id: Hashable
+
 
 class BPRReference(TypedDict):
     id: BranchProtectionRuleID
     repository: BPRReferenceRepoID
 
+
 class PushAllowance(TypedDict):
     actor: Actor
     branchProtectionRule: BPRReference
     # ...
+
 
 class BranchProtectionRuleNode(TypedDict):
     id: BranchProtectionRuleID
@@ -127,8 +153,10 @@ class BranchProtectionRuleNode(TypedDict):
     allowsDeletions: bool
     pushAllowances: List[PushAllowance]
 
+
 class BranchProtectionRules(TypedDict):
     nodes: List[BranchProtectionRuleNode]
+
 
 class RepoNode(TypedDict):
     id: RepoID
@@ -140,32 +168,40 @@ class RepoNode(TypedDict):
     collaborators: RepoCollaboratorEdges
     branchProtectionRules: BranchProtectionRules
 
+
 class Repo(TypedDict):
     node: RepoNode
+
 
 class RepoWithPerms(TypedDict):
     node: RepoNode
     permission: str
 
+
 class RepoEdges(TypedDict):
     edges: List[Repo]
+
 
 class Organisation(TypedDict):
     teams: TeamEdges
     repositories: RepoEdges
     membersWithRole: List[UserID]
 
+
 class RstateData(TypedDict):
     organization: Organisation
     users: MutableMapping[UserID, User]
 
+
 class Rstate(TypedDict):
     data: RstateData
+
 
 class Node(TypedDict):
     node: Mapping
 
 # internal common
+
 
 def _get_root(rstate: Rstate) -> RstateData:
     return rstate['data']
@@ -440,6 +476,7 @@ def push_allowance_actor(allowance: PushAllowance) -> Actor:
 
 ###
 
+
 def actor_type(actor: Actor) -> ActorType:
     return actor['__typename']
 
@@ -456,6 +493,7 @@ def actor_get_app(rstate, actor):
     raise NotImplementedError()
 
 ###
+
 
 def all_bp_rules(rstate: Rstate) -> Set[BranchProtectionRuleID]:
     result = set()
@@ -581,12 +619,9 @@ def merge_repo_branch_protection(
     repo['node']['branchProtectionRules']['nodes'] = rules_filtered
     return repo
 
+
 def merge_members(old_value, new_value):
-    # print('merge old:')
-    # print(old_value)
-    # print('merge new:')
-    # print(new_value)
-    assert False
+    raise NotImplementedError('not implemented')
 
 
 def merge(rstate, alias, new_data):
@@ -630,7 +665,7 @@ def merge(rstate, alias, new_data):
                 )
                 edges = rstate['data']['organization']['repositories']['edges']
                 new_list = [x for x in edges
-                                if x['node']['id'] != repo['node']['id']]
+                            if x['node']['id'] != repo['node']['id']]
                 new_list.append(merge_repo_branch_protection(repo, item))
                 rstate['data']['organization']['repositories']['edges'] = new_list
     if 'repository' in new_data['data']['organization']:

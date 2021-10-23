@@ -106,7 +106,7 @@ def stats():
               users,
               bp_rules,
               teams + repositories + members + users + bp_rules
-    ))
+          ))
 
 
 def _common_list(list_func, mode, fmt, rstate=None):
@@ -162,13 +162,14 @@ def org_repositories_branch_protection(ctx, name, mode):
     _common_list(
         lambda _: schema.repo_branch_protection_rules(repo), mode,
         ui.Formatter(
-            (('pattern', 20), ('creator', 40), ('admin enforced', 14), ('approvals', 9),
-             ('owner approval', 14), ('commit signatures', 17),
-             ('linear history', 14), ('restrict pushes', 15),
-             ('restrict deletion', 17)),
+            (('pattern', 20), ('creator', 40), ('admin enforced', 14),
+             ('approvals', 9), ('owner approval', 14),
+             ('commit signatures', 17), ('linear history', 14),
+             ('restrict pushes', 15), ('restrict deletion', 17)),
             lambda x: (
                 (schema.branch_protection_pattern(x), 20),
-                (user_map.email(usermap, schema.branch_protection_creator(x)), 40),
+                (user_map.email(usermap,
+                                schema.branch_protection_creator(x)), 40),
                 (schema.branch_protection_admin_enforced(x), 14),
                 (schema.branch_protection_approvals(x), 9),
                 (schema.branch_protection_owner_approval(x), 14),
@@ -379,6 +380,7 @@ def user_show(login):
               teams()
           ))
 
+
 @cli.group('usermap')
 def usermap_group():
     pass
@@ -396,6 +398,7 @@ def usermap_get_login(ctx, email):
 @click.pass_context
 def usermap_get_email(ctx, login):
     print(user_map.email(ctx.obj['usermap'], login))
+
 
 @cli.command('test')
 def test():

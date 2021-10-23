@@ -6,18 +6,18 @@ from ghaudit.cli import cli
 if __name__ == "__main__":
     LOGFILE = os.environ.get("LOGFILE")
     LOGLEVEL = os.environ.get("LOGLEVEL", "ERROR")
-    log_format = '{asctime} {levelname:8s} ghaudit <{filename}:{lineno} {module}.{funcName}> {message}'
-    style='{'
+    LOG_FORMAT = '{asctime} {levelname:8s} ghaudit <{filename}:{lineno} {module}.{funcName}> {message}'
+    STYLE = '{'
     if LOGFILE:
         handler = logging.FileHandler(LOGFILE)
-        formatter = logging.Formatter(log_format, style=style)
+        formatter = logging.Formatter(LOG_FORMAT, style=STYLE)
         handler.setFormatter(formatter)
         root = logging.getLogger()
         root.setLevel(LOGLEVEL)
         root.addHandler(handler)
     else:
         logging.basicConfig(
-            level=LOGLEVEL, format=log_format, style=style
+            level=LOGLEVEL, format=LOG_FORMAT, style=STYLE
         )
-    #pylint: disable=no-value-for-parameter
+    # pylint: disable=no-value-for-parameter
     cli()

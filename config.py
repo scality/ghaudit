@@ -8,8 +8,10 @@ from typing import List
 from typing import Set
 from typing_extensions import TypedDict
 
-Team = TypedDict('Team', {'name': str, 'members': List[str], 'children': List[str]})
-Organisation = TypedDict('Organisation', {'name': str, 'owners': List[str], 'teams': List[Team]})
+Team = TypedDict(
+    'Team', {'name': str, 'members': List[str], 'children': List[str]})
+Organisation = TypedDict(
+    'Organisation', {'name': str, 'owners': List[str], 'teams': List[Team]})
 Config = TypedDict('Config', {'organisation': Organisation})
 
 

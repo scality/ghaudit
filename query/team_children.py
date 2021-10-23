@@ -36,7 +36,8 @@ fragment teamChildren{{ num }} on Query {
     def __init__(self, team, num, max_):
         SubQueryCommon.__init__(
             self,
-            [TeamChildrenQuery.FRAG_TEAM_CHILDREN_EDGE, TeamChildrenQuery.FRAG_TEAM_CHILDREN_ENTRY],
+            [TeamChildrenQuery.FRAG_TEAM_CHILDREN_EDGE,
+             TeamChildrenQuery.FRAG_TEAM_CHILDREN_ENTRY],
             'teamChildren{}'.format(num),
             {'organisation': 'String!', 'teamChildrenMax': 'Int!'}
         )

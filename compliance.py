@@ -20,7 +20,11 @@ def user_str(login: str, username: Optional[str], email: Optional[str]) -> str:
     return 'user "{}" {}, not mapped'.format(login, username_str)
 
 
-def check_team_unref(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team) -> bool:
+def check_team_unref(
+        rstate: schema.Rstate,
+        conf,
+        policy_: policy.Policy,
+        team: schema.Team) -> bool:
     """Check if team is referenced in config
 
     Ignore teams that do not have access to repositories in scope
@@ -53,7 +57,10 @@ def check_repo_unref(rstate, conf, policy_, repo: schema.Repo) -> bool:
     return True
 
 
-def check_repo_visibility(rstate: schema.Rstate, policy_: policy.Policy, repo: schema.Repo) -> bool:
+def check_repo_visibility(
+        rstate: schema.Rstate,
+        policy_: policy.Policy,
+        repo: schema.Repo) -> bool:
     name = schema.repo_name(repo)
     if not policy.repo_in_scope(policy_, repo) \
        or name not in policy.get_repos(policy_):
@@ -72,10 +79,16 @@ def check_repo_visibility(rstate: schema.Rstate, policy_: policy.Policy, repo: s
     return True
 
 
-def _check_team_repo_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team, repo: schema.RepoWithPerms) -> bool:
+def _check_team_repo_permissions(
+        rstate: schema.Rstate,
+        conf,
+        policy_: policy.Policy,
+        team: schema.Team,
+        repo: schema.RepoWithPerms) -> bool:
     name = schema.team_name(team)
     repo_name = schema.repo_name(repo)
-    policy_perm = policy.team_repo_perm(conf, policy_, schema.team_name(team), repo)
+    policy_perm = policy.team_repo_perm(
+        conf, policy_, schema.team_name(team), repo)
     perm = policy.perm_translate(repo['permission'])
     if not policy_perm:
         error(
@@ -98,7 +111,11 @@ def _check_team_repo_permissions(rstate: schema.Rstate, conf, policy_: policy.Po
     return True
 
 
-def check_team_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team) -> bool:
+def check_team_permissions(
+        rstate: schema.Rstate,
+        conf,
+        policy_: policy.Policy,
+        team: schema.Team) -> bool:
     repositories = schema.team_repos(rstate, team)
     success = True
 
@@ -110,7 +127,11 @@ def check_team_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, 
     return success
 
 
-def check_team_members(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, team: schema.Team) -> bool:
+def check_team_members(rstate: schema.Rstate,
+                       conf,
+                       usermap,
+                       policy_: policy.Policy,
+                       team: schema.Team) -> bool:
     name = schema.team_name(team)
     conf_team = config.get_team(conf, name)
     success = True
@@ -136,7 +157,12 @@ def check_team_members(rstate: schema.Rstate, conf, usermap, policy_: policy.Pol
     return success
 
 
-def check_repo_collaborators(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, repo: schema.Repo) -> bool:
+def check_repo_collaborators(
+        rstate: schema.Rstate,
+        conf,
+        usermap,
+        policy_: policy.Policy,
+        repo: schema.Repo) -> bool:
     name = schema.repo_name(repo)
     success = True
 
@@ -176,7 +202,12 @@ def check_repo_collaborators(rstate: schema.Rstate, conf, usermap, policy_: poli
     return success
 
 
-def check_user(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, user: schema.User) -> bool:
+def check_user(
+        rstate: schema.Rstate,
+        conf,
+        usermap,
+        policy_: policy.Policy,
+        user: schema.User) -> bool:
     result = True
     login = schema.user_login(user)
     email = user_map.email(usermap, login)
@@ -202,7 +233,8 @@ def check_user(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, use
     return result
 
 
-def check_missing_repos(rstate: schema.Rstate, conf, policy_: policy.Policy) -> bool:
+def check_missing_repos(
+        rstate: schema.Rstate, conf, policy_: policy.Policy) -> bool:
     """Check if a repository is part of the policy_, but does not exist
     """
     for repo_name in policy.get_repos(policy_):
@@ -210,7 +242,8 @@ def check_missing_repos(rstate: schema.Rstate, conf, policy_: policy.Policy) -> 
             print('Error: repository "{}" does not exist'.format(repo_name))
 
 
-def check_missing_teams(rstate: schema.Rstate, conf, policy_: policy.Policy) -> bool:
+def check_missing_teams(
+        rstate: schema.Rstate, conf, policy_: policy.Policy) -> bool:
     """Check if a team is part of the policy_, but does not exist
     """
     for team in config.get_teams(conf):
@@ -219,7 +252,11 @@ def check_missing_teams(rstate: schema.Rstate, conf, policy_: policy.Policy) -> 
             print('Error: team "{}" does not exist'.format(name))
 
 
-def check_repo_branch_protection(rstate: schema.Rstate, conf, policy_: policy.Policy, repo: schema.Repo) -> bool:
+def check_repo_branch_protection(
+        rstate: schema.Rstate,
+        conf,
+        policy_: policy.Policy,
+        repo: schema.Repo) -> bool:
     name = schema.repo_name(repo)
     patterns = policy.branch_protection_patterns(policy_, name)
     for pattern in patterns:
@@ -230,7 +267,8 @@ def check_repo_branch_protection(rstate: schema.Rstate, conf, policy_: policy.Po
                 .format(pattern, name))
         else:
             rule = policy.branch_protection_get(policy_, name, pattern)
-            result = policy.bprule_cmp(rstate, policy_, rstate_value, rule.model, rule.mode)
+            result = policy.bprule_cmp(
+                rstate, policy_, rstate_value, rule.model, rule.mode)
             if result:
                 error(
                     'mismatched branch protection rule with for repository "{}" and pattern "{}". differences: {}'

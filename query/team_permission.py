@@ -37,7 +37,8 @@ fragment teamRepo{{ num }} on Query {
     def __init__(self, team, num, max_):
         SubQueryCommon.__init__(
             self,
-            [TeamRepoQuery.FRAG_TEAM_REPO_EDGE, TeamRepoQuery.FRAG_TEAM_REPO_ENTRY],
+            [TeamRepoQuery.FRAG_TEAM_REPO_EDGE,
+             TeamRepoQuery.FRAG_TEAM_REPO_ENTRY],
             'teamRepo{}'.format(num),
             {'organisation': 'String!', 'teamRepoMax': 'Int!'}
         )

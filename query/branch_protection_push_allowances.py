@@ -1,6 +1,7 @@
 
 from ghaudit.query.sub_query_common import SubQueryCommon
 
+
 class BranchProtectionPushAllowances(SubQueryCommon):
 
     FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES = """
@@ -41,7 +42,6 @@ fragment branchProtection{{ num }} on Query {
   }
 }
 """
-
 
     def __init__(self, bp_id, num, max_):
         SubQueryCommon.__init__(

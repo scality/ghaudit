@@ -15,7 +15,8 @@ from ghaudit.query.team_permission import TeamRepoQuery
 from ghaudit.query.user_role import TeamMemberQuery
 from ghaudit.query.user import UserQuery
 from ghaudit.query.repo_branch_protection import RepoBranchProtectionQuery
-from ghaudit.query.branch_protection_push_allowances import BranchProtectionPushAllowances
+from ghaudit.query.branch_protection_push_allowances \
+    import BranchProtectionPushAllowances
 
 
 def file_path():
@@ -112,7 +113,8 @@ def _sync(config, auth_driver):
             name = schema.team_name(team)
             query.append(TeamRepoQuery(name, workaround2['team'], 40))
             workaround2['team'] += 1
-            query.append(TeamMemberQuery(team['node']['slug'], workaround2['team'], 40))
+            query.append(
+                TeamMemberQuery(team['node']['slug'], workaround2['team'], 40))
             workaround2['team'] += 1
             found['teams'].append(name)
             query.append(TeamChildrenQuery(name, workaround2['team'], 40))
@@ -123,7 +125,8 @@ def _sync(config, auth_driver):
             name = schema.repo_name(repo)
             query.append(RepoCollaboratorQuery(name, workaround2['repo'], 40))
             workaround2['repo'] += 1
-            query.append(RepoBranchProtectionQuery(name, workaround2['repo'], 40))
+            query.append(
+                RepoBranchProtectionQuery(name, workaround2['repo'], 40))
             workaround2['repo'] += 1
             found['repositories'].append(name)
 

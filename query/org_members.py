@@ -34,7 +34,8 @@ fragment membersWithRole on Query {
     def __init__(self):
         SubQueryCommon.__init__(
             self,
-            [OrgMembersQuery.FRAG_ORG_MEMBERS_FIELDS, OrgMembersQuery.FRAG_ORG_MEMBERS],
+            [OrgMembersQuery.FRAG_ORG_MEMBERS_FIELDS,
+             OrgMembersQuery.FRAG_ORG_MEMBERS],
             'membersWithRole',
             {'organisation': 'String!', 'membersWithRoleMax': 'Int!'}
         )

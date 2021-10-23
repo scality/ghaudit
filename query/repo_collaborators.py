@@ -34,7 +34,8 @@ fragment repoCollaborator{{ num }} on Query {
     def __init__(self, repository, num, max_):
         SubQueryCommon.__init__(
             self,
-            [RepoCollaboratorQuery.FRAG_REPO_USER_EDGE, RepoCollaboratorQuery.FRAG_REPO_USER_ENTRY],
+            [RepoCollaboratorQuery.FRAG_REPO_USER_EDGE,
+             RepoCollaboratorQuery.FRAG_REPO_USER_ENTRY],
             'repoCollaborator{}'.format(num),
             {'organisation': 'String!', 'repoCollaboratorMax': 'Int!'}
         )
