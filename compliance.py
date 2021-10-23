@@ -271,7 +271,7 @@ def check_repo_branch_protection(
                 rstate, policy_, rstate_value, rule.model, rule.mode)
             if result:
                 error(
-                    'mismatched branch protection rule with for repository "{}" and pattern "{}". differences: {}'
+                    'mismatched branch protection rule in repository "{}" with pattern "{}". differences: {}'
                     .format(name, pattern, result)
                 )
 
