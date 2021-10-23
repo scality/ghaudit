@@ -25,6 +25,13 @@ def get_team(config: Config, name: str) -> Optional[Team]:
     return None
 
 
+def _get_team_exists(config: Config, name: str) -> Team:
+    team = get_team(config, name)
+    if not team:
+        raise RuntimeError('team {} not found'.format(name))
+    return team
+
+
 def team_name(team: Team) -> str:
     return team['name']
 
@@ -41,7 +48,7 @@ def team_direct_members(team: Team) -> Collection[str]:
 def team_effective_members(config: Config, team: Team) -> Set[str]:
     return reduce(
         lambda acc, child: acc | set(team_direct_members(child)),
-        [get_team(config, x) for x in team_descendants(config, team)],
+        [_get_team_exists(config, x) for x in team_descendants(config, team)],
         set(team_direct_members(team))
     )
 
@@ -53,9 +60,9 @@ def team_children(team: Team) -> Collection[str]:
 
 
 def team_descendants(config: Config, team: Team) -> Set[str]:
-    def reduce_function(acc, child_name):
-        child_team = get_team(config, child_name)
-        return acc | set(team_descendants(config, child_team)) | {child_name}
+    def reduce_function(acc: Set[str], child_name: str) -> Set[str]:
+        child_team = _get_team_exists(config, child_name)
+        return acc | team_descendants(config, child_team) | {child_name}
     if 'children' in team:
         return reduce(reduce_function, set(team_children(team)), set())
     return set()

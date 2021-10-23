@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import click
 from ruamel.yaml import YAML
 
@@ -67,7 +69,7 @@ def cache_refresh(ctx, token_pass_name):
     cache.refresh(ctx.obj['config'], auth_driver)
 
 
-def user_short_str(user):
+def user_short_str(user: schema.User) -> str:
     if schema.user_name(user):
         return '{} ({})'.format(
             schema.user_login(user),
@@ -76,11 +78,11 @@ def user_short_str(user):
     return '{}'.format(schema.user_login(user))
 
 
-def repo_short_str(repo):
+def repo_short_str(repo: schema.Repo) -> str:
     return schema.repo_name(repo)
 
 
-def team_short_str(team):
+def team_short_str(team: schema.Team) -> str:
     return schema.team_name(team)
 
 
@@ -246,7 +248,7 @@ def org_repository_group():
 @org_repository_group.command('show')
 @click.argument('name')
 def org_repository_show(name):
-    def collaborators(repository):
+    def collaborators(repository: schema.Repo) -> str:
         result = '\n'
         for collaborator in schema.repo_collaborators(rstate, repository):
             permission = collaborator['role']
@@ -281,7 +283,7 @@ def org_team_group():
 
 @org_team_group.command('tree')
 def org_team_tree():
-    def print_teams(teams, indent):
+    def print_teams(teams: Iterable[schema.Team], indent: int) -> None:
         for team in teams:
             team_name = schema.team_name(team)
             print('{}* {}'.format(''.rjust(indent * 2), team_name))
@@ -298,7 +300,7 @@ def org_team_tree():
 @org_team_group.command('show')
 @click.argument('name')
 def org_team_show(name):
-    def members(team):
+    def members(team: schema.Team) -> str:
         result = '\n'
         for member in schema.team_members(rstate, team):
             permission = member['role']
@@ -309,7 +311,7 @@ def org_team_show(name):
             ))
         return result
 
-    def repositories(team):
+    def repositories(team: schema.Team) -> str:
         result = '\n'
         for repo in schema.team_repos(rstate, team):
             permission = repo['permission']
@@ -319,7 +321,7 @@ def org_team_show(name):
             ))
         return result
 
-    def children(team):
+    def children(team: schema.Team) -> str:
         result = '\n'
         for child in schema.team_children(rstate, team):
             result += ('   * {}\n'.format(
@@ -353,7 +355,7 @@ def user_group():
 @user_group.command('show')
 @click.argument('login')
 def user_show(login):
-    def teams():
+    def teams() -> str:
         result = '\n'
         for team in schema.org_teams(rstate):
             for member in schema.team_members(rstate, team):

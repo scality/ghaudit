@@ -110,7 +110,7 @@ def check_team_permissions(rstate: schema.Rstate, conf, policy_: policy.Policy, 
     return success
 
 
-def check_team_members(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, team: schema.Team):
+def check_team_members(rstate: schema.Rstate, conf, usermap, policy_: policy.Policy, team: schema.Team) -> bool:
     name = schema.team_name(team)
     conf_team = config.get_team(conf, name)
     success = True

@@ -1,18 +1,31 @@
 
+from typing import Literal
 from typing import Optional
 from typing import Hashable
 from typing import Mapping
 from typing import Collection
 from typing import List
+from typing import Set
+from typing import Callable
+from typing import Any
+from typing import Iterable
+from typing import cast
+from typing import MutableMapping
 from typing_extensions import TypedDict
 import logging
 
+TeamRole = Literal['MEMBER', 'MAINTAINER']
+
+UserID = Hashable
+TeamID = Hashable
+RepoID = Hashable
+
 class TeamMemberNode(TypedDict):
-    id: Hashable
+    id: UserID
 
 class TeamMemberEdge(TypedDict):
     node: TeamMemberNode
-    role: str
+    role: TeamRole
 
 class TeamMemberEdges(TypedDict):
     edges: List[TeamMemberEdge]
@@ -37,6 +50,7 @@ class ChildTeams(TypedDict):
     edges: List[ChildTeam]
 
 class TeamNode(TypedDict):
+    id: TeamID
     name: str
     description: str
     repositories: TeamRepoEdges
@@ -51,6 +65,7 @@ class TeamEdges(TypedDict):
     edges: List[Team]
 
 class UserNode(TypedDict):
+    id: UserID
     name: Optional[str]
     login: str
     email: str
@@ -59,7 +74,11 @@ class UserNode(TypedDict):
 class User(TypedDict):
     node: UserNode
 
+class UserWithRole(User):
+    role: TeamRole
+
 class RepoCollaborator(TypedDict):
+    # todo be more specific
     role: str
     node: UserNode
 
@@ -74,13 +93,52 @@ class RepoCollaboratorEdge(TypedDict):
 class RepoCollaboratorEdges(TypedDict):
     edges: List[RepoCollaboratorEdge]
 
+ActorType = Literal['User', 'Team']
+
+class Actor(TypedDict):
+    id: Hashable
+    __typename: ActorType
+
+BranchProtectionRuleID = Hashable
+
+class BPRReferenceRepoID:
+    id: Hashable
+
+class BPRReference(TypedDict):
+    id: BranchProtectionRuleID
+    repository: BPRReferenceRepoID
+
+class PushAllowance(TypedDict):
+    actor: Actor
+    branchProtectionRule: BPRReference
+    # ...
+
+class BranchProtectionRuleNode(TypedDict):
+    id: BranchProtectionRuleID
+    pattern: str
+    isAdminEnforced: bool
+    requiresApprovingReviews: bool
+    requiredApprovingReviewCount: int
+    requiresCodeOwnerReviews: bool
+    requiresCommitSignatures: bool
+    requiresLinearHistory: bool
+    restrictsPushes: bool
+    restrictsReviewDismissals: bool
+    allowsDeletions: bool
+    pushAllowances: List[PushAllowance]
+
+class BranchProtectionRules(TypedDict):
+    nodes: List[BranchProtectionRuleNode]
+
 class RepoNode(TypedDict):
+    id: RepoID
     name: str
     isArchived: bool
     isFork: bool
     isPrivate: bool
     description: str
     collaborators: RepoCollaboratorEdges
+    branchProtectionRules: BranchProtectionRules
 
 class Repo(TypedDict):
     node: RepoNode
@@ -92,20 +150,20 @@ class RepoWithPerms(TypedDict):
 class RepoEdges(TypedDict):
     edges: List[Repo]
 
-
-OrgUsers = Mapping[Hashable, User]
-
 class Organisation(TypedDict):
     teams: TeamEdges
     repositories: RepoEdges
-    membersWithRole: List[Hashable]
+    membersWithRole: List[UserID]
 
 class RstateData(TypedDict):
     organization: Organisation
-    users: OrgUsers
+    users: MutableMapping[UserID, User]
 
 class Rstate(TypedDict):
     data: RstateData
+
+class Node(TypedDict):
+    node: Mapping
 
 # internal common
 
@@ -125,16 +183,19 @@ def _get_org_repos(rstate: Rstate) -> List[Repo]:
     return _get_org(rstate)['repositories']['edges']
 
 
-def _get_org_members(rstate: Rstate) -> List[Hashable]:
+def _get_org_members(rstate: Rstate) -> List[UserID]:
     return _get_org(rstate)['membersWithRole']
 
 
-def _get_x_by_y(rstate: Rstate, seq_get, key, value):
+def _get_x_by_y(rstate: Rstate,
+                seq_get: Callable[[Rstate], Iterable[Node]],
+                key: str,
+                value: Any) -> Any:
     seq = seq_get(rstate)
     return [x for x in seq if x['node'][key] == value]
 
 
-def _get_unique_x_by_y(rstate: Rstate, seq_get, key, value):
+def _get_unique_x_by_y(rstate: Rstate, seq_get, key: str, value):
     elems = _get_x_by_y(rstate, seq_get, key, value)
     assert len(elems) <= 1
     if elems:
@@ -148,11 +209,11 @@ def user_by_login(rstate: Rstate, login: str) -> str:
     return _get_unique_x_by_y(rstate, users, 'login', login)
 
 
-def _user_by_id_noexcept(rstate: Rstate, user_id) -> Optional[User]:
+def _user_by_id_noexcept(rstate: Rstate, user_id: UserID) -> Optional[User]:
     return rstate['data']['users'].get(user_id)
 
 
-def user_by_id(rstate: Rstate, user_id) -> User:
+def user_by_id(rstate: Rstate, user_id: UserID) -> User:
     user = _user_by_id_noexcept(rstate, user_id)
     assert user
     return user
@@ -176,7 +237,7 @@ def org_members(rstate: Rstate) -> List[User]:
     return [user_by_id(rstate, x) for x in _get_org_members(rstate)]
 
 
-def org_team_by_id(rstate: Rstate, team_id) -> Team:
+def org_team_by_id(rstate: Rstate, team_id: TeamID) -> Team:
     return _get_unique_x_by_y(rstate, _get_org_teams, 'id', team_id)
 
 
@@ -184,7 +245,7 @@ def org_team_by_name(rstate: Rstate, name: str) -> Team:
     return _get_unique_x_by_y(rstate, _get_org_teams, 'name', name)
 
 
-def org_repo_by_id(rstate: Rstate, repo_id) -> Repo:
+def org_repo_by_id(rstate: Rstate, repo_id: RepoID) -> Repo:
     return _get_unique_x_by_y(rstate, _get_org_repos, 'id', repo_id)
 
 
@@ -214,7 +275,7 @@ def repo_description(repo: Repo) -> str:
     return repo['node']['description']
 
 
-def repo_collaborators(rstate: Rstate, repo: Repo):
+def repo_collaborators(rstate: Rstate, repo: Repo) -> List[RepoCollaborator]:
     def mkobj(rstate: Rstate, edge: RepoCollaboratorEdge) -> RepoCollaborator:
         return {
             'role': edge['permission'],
@@ -226,17 +287,20 @@ def repo_collaborators(rstate: Rstate, repo: Repo):
     return []
 
 
-def repo_branch_protection_rules(repo):
+def repo_branch_protection_rules(
+        repo: Repo) -> List[BranchProtectionRuleNode]:
     return repo['node']['branchProtectionRules']['nodes']
 
 
-def _repo_branch_protection_rules_noexcept(repo):
+def _repo_branch_protection_rules_noexcept(
+        repo: Repo) -> Optional[List[BranchProtectionRuleNode]]:
     if 'branchProtectionRules' in repo['node']:
         return repo_branch_protection_rules(repo)
     return None
 
 
-def repo_branch_protection_rule(repo, pattern):
+def repo_branch_protection_rule(
+        repo: Repo, pattern: str) -> Optional[BranchProtectionRuleNode]:
     rules = repo_branch_protection_rules(repo)
     elems = [x for x in rules if branch_protection_pattern(x) == pattern]
     assert len(elems) <= 1
@@ -256,7 +320,7 @@ def team_description(team: Team) -> str:
 
 
 def team_repos(rstate: Rstate, team: Team) -> List[RepoWithPerms]:
-    def mkobj(rstate: Rstate, edge):
+    def mkobj(rstate: Rstate, edge: TeamRepoEdge) -> RepoWithPerms:
         return {
             'permission': edge['permission'],
             'node': org_repo_by_id(rstate, edge['node']['id'])['node']
@@ -267,8 +331,8 @@ def team_repos(rstate: Rstate, team: Team) -> List[RepoWithPerms]:
     return []
 
 
-def team_members(rstate: Rstate, team: Team) -> List[User]:
-    def mkobj(rstate, edge):
+def team_members(rstate: Rstate, team: Team) -> List[UserWithRole]:
+    def mkobj(rstate: Rstate, edge: TeamMemberEdge) -> UserWithRole:
         return {
             'role': edge['role'],
             'node': user_by_id(rstate, edge['node']['id'])['node']
@@ -287,7 +351,7 @@ def team_parent(rstate: Rstate, team: Team) -> Optional[Team]:
 
 
 def team_children(rstate: Rstate, team: Team) -> List[Team]:
-    def mkobj(rstate, edge):
+    def mkobj(rstate: Rstate, edge: ChildTeam) -> Team:
         return {
             'node': org_team_by_id(rstate, edge['node']['id'])['node']
         }
@@ -315,47 +379,50 @@ def user_company(user: User) -> str:
     return user['node']['company']
 
 
-def user_is_owner(user):
+def user_is_owner(user: User) -> bool:
     return 'role' in user and user['role'] == 'ADMIN'
 
 # branch protection rules
 
 
-def branch_protection_id(rule):
+def branch_protection_id(
+        rule: BranchProtectionRuleNode) -> Hashable:
     return rule['id']
 
 
-def branch_protection_pattern(rule):
+def branch_protection_pattern(rule: BranchProtectionRuleNode) -> str:
     return rule['pattern']
 
 
-def branch_protection_admin_enforced(rule):
+def branch_protection_admin_enforced(rule: BranchProtectionRuleNode) -> bool:
     return rule['isAdminEnforced']
 
 
-def branch_protection_approvals(rule):
+def branch_protection_approvals(rule: BranchProtectionRuleNode) -> int:
     if rule['requiresApprovingReviews']:
         return rule['requiredApprovingReviewCount']
     return 0
 
 
-def branch_protection_owner_approval(rule):
+def branch_protection_owner_approval(rule: BranchProtectionRuleNode) -> bool:
     return rule['requiresCodeOwnerReviews']
 
 
-def branch_protection_commit_signatures(rule):
+def branch_protection_commit_signatures(
+        rule: BranchProtectionRuleNode) -> bool:
     return rule['requiresCommitSignatures']
 
 
-def branch_protection_linear_history(rule):
+def branch_protection_linear_history(rule: BranchProtectionRuleNode) -> bool:
     return rule['requiresLinearHistory']
 
 
-def branch_protection_restrict_pushes(rule):
+def branch_protection_restrict_pushes(rule: BranchProtectionRuleNode) -> bool:
     return rule['restrictsPushes']
 
 
-def branch_protection_restrict_deletion(rule):
+def branch_protection_restrict_deletion(
+        rule: BranchProtectionRuleNode) -> bool:
     return not rule['allowsDeletions']
 
 
@@ -363,24 +430,25 @@ def branch_protection_creator(rule):
     return rule['creator']['login']
 
 
-def branch_protection_push_allowances(rule):
+def branch_protection_push_allowances(
+        rule: BranchProtectionRuleNode) -> List[PushAllowance]:
     return rule['pushAllowances']
 
 
-def push_allowance_actor(allowance):
+def push_allowance_actor(allowance: PushAllowance) -> Actor:
     return allowance['actor']
 
 ###
 
-def actor_type(actor):
+def actor_type(actor: Actor) -> ActorType:
     return actor['__typename']
 
 
-def actor_get_user(rstate, actor):
+def actor_get_user(rstate: Rstate, actor: Actor) -> User:
     return user_by_id(rstate, actor['id'])
 
 
-def actor_get_team(rstate, actor):
+def actor_get_team(rstate: Rstate, actor: Actor) -> Team:
     return org_team_by_id(rstate, actor['id'])
 
 
@@ -389,7 +457,7 @@ def actor_get_app(rstate, actor):
 
 ###
 
-def all_bp_rules(rstate: Rstate):
+def all_bp_rules(rstate: Rstate) -> Set[BranchProtectionRuleID]:
     result = set()
     for repo in org_repositories(rstate):
         bprules = _repo_branch_protection_rules_noexcept(repo)
@@ -408,7 +476,7 @@ def _user_create(rstate: Rstate, user: Mapping) -> Rstate:
     assert 'email' in user['node']
     assert isinstance(user['node']['id'], Hashable)
     user_id = user['node'].pop('id')
-    rstate['data']['users'][user_id] = user
+    rstate['data']['users'][user_id] = cast(User, user)
     return rstate
 
 
@@ -469,7 +537,7 @@ def merge_team(old_value: Team, new_value: Mapping) -> Team:
     return result
 
 
-def merge_repo(old_value, new_value):
+def merge_repo(old_value: Repo, new_value: Repo) -> Repo:
     result = old_value
     logging.debug('merging repo old: {}, new: {}'.format(
         old_value, new_value
@@ -480,9 +548,9 @@ def merge_repo(old_value, new_value):
         collaborators = {'edges': []}
     if 'collaborators' in new_value['node'] \
        and new_value['node']['collaborators']:
-        for item in new_value['node']['collaborators']['edges']:
-            if item:
-                collaborators['edges'].append(item)
+        for item1 in new_value['node']['collaborators']['edges']:
+            if item1:
+                collaborators['edges'].append(item1)
 
     if 'branchProtectionRules' in old_value['node']:
         branch_protection_rules = old_value['node']['branchProtectionRules']
@@ -490,10 +558,10 @@ def merge_repo(old_value, new_value):
         branch_protection_rules = {'nodes': []}
     if 'branchProtectionRules' in new_value['node'] \
        and new_value['node']['branchProtectionRules']:
-        for item in new_value['node']['branchProtectionRules']['nodes']:
-            if item:
-                item['pushAllowances'] = []
-                branch_protection_rules['nodes'].append(item)
+        for item2 in new_value['node']['branchProtectionRules']['nodes']:
+            if item2:
+                item2['pushAllowances'] = []
+                branch_protection_rules['nodes'].append(item2)
 
     result['node']['collaborators'] = collaborators
     result['node']['branchProtectionRules'] = branch_protection_rules
@@ -501,7 +569,8 @@ def merge_repo(old_value, new_value):
     return result
 
 
-def merge_repo_branch_protection(repo, push_allowance):
+def merge_repo_branch_protection(
+        repo: Repo, push_allowance: PushAllowance) -> Repo:
     assert 'branchProtectionRules' in repo['node']
     bprule_id = push_allowance['branchProtectionRule']['id']
     # del push_allowance['branchProtectionRule']

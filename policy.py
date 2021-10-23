@@ -1,4 +1,4 @@
-from functools import reduce
+import functools
 from collections import namedtuple
 import operator
 import logging
@@ -10,17 +10,75 @@ from typing import MutableMapping
 from typing import NewType
 from typing import Collection
 from typing import List
+from typing import Union
+from typing import Iterable
+from typing_extensions import TypedDict
 
 from ghaudit import schema
 from ghaudit import config
 from ghaudit import user_map
 
 Perm = Literal["read", "write", "admin"]
+BPRMode = Literal['baseline', 'strict']
 Visibility = Literal["public", "private"]
 TeamAccessKey = NewType('TeamAccessKey', str)
 UserAccessKey = NewType('UserAccessKey', str)
+BPRModel_Requirements = TypedDict(
+    'BPRModel_Requirements',
+    {
+        'approvals': int,
+        'owner approval': bool,
+        'commit signatures': bool,
+        'linear history': bool,
+        # 'status check': todo
+        'up to date': bool,
+    }
+)
 
-BranchProtectionRule = namedtuple('BranchProtectionRule', 'model mode')
+# TODO import this from schema
+ActorType = Literal['User', 'Team']
+class UserActor(TypedDict):
+    type: Literal['User']
+    login: str
+
+class TeamActor(TypedDict):
+    type: Literal['Team']
+    name: str
+
+BPRPushAllowance = Union[UserActor, TeamActor]
+BPRDismissReviewAllowance = Union[UserActor, TeamActor]
+
+class BPRPushRestriction(TypedDict):
+    enable: bool
+    exceptions: List[BPRPushAllowance]
+
+class BPRDismissReviewRestriction(TypedDict):
+    enable: bool
+    exceptions: List[BPRDismissReviewAllowance]
+
+class BPRDeletionRestriction(TypedDict):
+    enable: bool
+
+BPRRestrictions = TypedDict(
+    'BPRRestrictions',
+    {
+        'push': BPRPushRestriction,
+        'dismiss review': BPRDismissReviewRestriction,
+        'deletion': BPRDeletionRestriction
+    }
+)
+
+BPRModel = TypedDict(
+    'BPRModel',
+    {
+        'name': str,
+        'requirements': BPRModel_Requirements,
+        'admin enforced': bool,
+        'restrictions': BPRRestrictions
+    }
+)
+
+BranchProtectionRule = namedtuple('BranchProtectionRule', ['model', 'mode'])
 
 
 class Policy:
@@ -28,10 +86,10 @@ class Policy:
         self._default_visibility = None     # type: Optional[Visibility]
         self._repos = {}                    # type: MutableMapping[str, Optional[Visibility]]
         self._repos_blacklist = []          # type: List[str]
-        self._team_access = {}              # type: MutableMapping[TeamAccessKey, Perm]
+        self._team_access = {}              # type: MutableMapping[TeamAccessKey, Optional[Perm]]
         self._user_access = {}              # type: MutableMapping[UserAccessKey, Perm]
         self._branch_protection = {}        # type: MutableMapping[str, MutableMapping[str, BranchProtectionRule]]
-        self._branch_protection_model = {}  # type: MutableMapping[str, dict]
+        self._branch_protection_model = {}  # type: MutableMapping[str, BPRModel]
 
     @staticmethod
     def team_access_key(team: str, repo: str) -> TeamAccessKey:
@@ -100,7 +158,7 @@ class Policy:
         assert not intersection
         # todo assert that either _default_visibility is not none, or that every
         # repository has an explicit visibility
-        allbprules = reduce(
+        allbprules = functools.reduce(
             lambda a, b: a + list(b.values()),
             self._branch_protection.values(),
             []
@@ -108,7 +166,7 @@ class Policy:
         for bprule in allbprules:
             assert(bprule.model in self._branch_protection_model)
 
-    def load_config(self, data) -> None:
+    def load_config(self, data: Mapping) -> None:
         if 'repositories' in data:
             repos_config = data['repositories']
             if 'exceptions' in repos_config:
@@ -162,55 +220,55 @@ class Policy:
         assert visibility
         return visibility
 
-    def branch_protection_patterns(self, repo):
-        if repo in self._branch_protection:
-            return self._branch_protection[repo].keys()
+    def branch_protection_patterns(self, repo_name: str) -> Collection[str]:
+        if repo_name in self._branch_protection:
+            return self._branch_protection[repo_name].keys()
         return []
 
-    def branch_protection_get(self, repo, pattern):
-        return self._branch_protection[repo][pattern]
+    def branch_protection_get(self, repo_name: str, pattern: str) -> BranchProtectionRule:
+        return self._branch_protection[repo_name][pattern]
 
-    def branch_protection_get_model(self, modelname):
+    def branch_protection_get_model(self, modelname: str) -> BPRModel:
         return self._branch_protection_model[modelname]
 
 
-def bprule_model_approvals(model):
+def bprule_model_approvals(model: BPRModel) -> int:
     return model['requirements']['approvals']
 
 
-def bprule_model_owner_approval(model):
+def bprule_model_owner_approval(model: BPRModel) -> bool:
     return model['requirements']['owner approval']
 
 
-def bprule_model_commit_signatures(model):
+def bprule_model_commit_signatures(model: BPRModel) -> bool:
     return model['requirements']['commit signatures']
 
 
-def bprule_model_linear_history(model):
+def bprule_model_linear_history(model: BPRModel) -> bool:
     return model['requirements']['linear history']
 
 
-def bprule_model_admin_enforced(model):
+def bprule_model_admin_enforced(model: BPRModel) -> bool:
     return model['admin enforced']
 
 
-def bprule_model_restrict_pushes(model):
+def bprule_model_restrict_pushes(model: BPRModel) -> bool:
     return model['restrictions']['push']['enable']
 
 
-def bprule_model_push_allowances(model):
+def bprule_model_push_allowances(model: BPRModel) -> List[BPRPushAllowance]:
     return model['restrictions']['push']['exceptions']
 
 
-def bprule_model_push_allowance_type(push_allowance):
+def bprule_model_push_allowance_type(push_allowance: BPRPushAllowance) -> ActorType:
     return push_allowance['type']
 
 
-def bprule_model_push_allowance_user_login(push_allowance):
+def bprule_model_push_allowance_user_login(push_allowance: UserActor) -> str:
     return push_allowance['login']
 
 
-def bprule_model_push_allowance_team_name(push_allowance):
+def bprule_model_push_allowance_team_name(push_allowance: TeamActor) -> str:
     return push_allowance['name']
 
 
@@ -218,11 +276,13 @@ def bprule_model_push_allowance_app_name(push_allowance):
     return push_allowance['name']
 
 
-def bprule_model_restrict_deletion(model):
+def bprule_model_restrict_deletion(model: BPRModel) -> bool:
     return model['restrictions']['deletion']['enable']
 
 
-def cmp_actor(rstate, from_rule, from_model):
+def cmp_actor(rstate: schema.Rstate,
+              from_rule: schema.PushAllowance,
+              from_model: BPRPushAllowance) -> bool:
     get_map = {
         'User': (
             lambda x: schema.user_login(schema.actor_get_user(rstate, x)),
@@ -254,30 +314,33 @@ def cmp_actor(rstate, from_rule, from_model):
     return False
 
 
-def cmp_actors_baseline(rstate, from_rules, from_models):
+def cmp_actors_baseline(rstate: schema.Rstate,
+                        from_rules: Iterable[schema.PushAllowance],
+                        from_models: List[BPRPushAllowance]) -> bool:
     logging.debug('cmp baseline models: {}, rules: {}'.format(from_models, from_rules))
-    to_check = set([tuple(x.items()) for x in from_models])
     for from_rule in from_rules:
-        matched = reduce(
-            lambda accum, x: accum or x if cmp_actor(rstate, from_rule, {y[0]:y[1] for y in x}) else None,
-            to_check,
-            None
-        )
-        if matched:
-            to_check.remove(matched)
-    return not to_check
+        predicate = functools.partial(cmp_actor, rstate, from_rule)
+        for matched in filter(predicate, from_models):
+            from_models.remove(matched)
+    return not len(from_models) > 0
 
 
-def cmp_actors_strict(rstate, from_rules, from_models):
+def cmp_actors_strict(rstate: schema.Rstate,
+                      from_rules,
+                      from_models) -> bool:
     if len(from_rules) != len(from_models):
         return False
     return cmp_actors_baseline(rstate, from_rules, from_models)
 
 
-def bprule_cmp(rstate, policy, rule, modelname, mode):
-    def cmp_bool_baseline(from_rule, from_model):
+def bprule_cmp(rstate: schema.Rstate,
+               policy: Policy,
+               rule: schema.BranchProtectionRuleNode,
+               modelname: str,
+               mode: BPRMode) -> List[str]:
+    def cmp_bool_baseline(from_rule: bool, from_model: bool) -> bool:
         return (from_model and from_rule) or not from_model
-    def approval_cmp_baseline(from_rule, from_model):
+    def approval_cmp_baseline(from_rule: int, from_model: int) -> bool:
         return not from_model or (from_rule >= from_model)
     model = policy.branch_protection_get_model(modelname)
     get_map = {
@@ -343,19 +406,19 @@ def bprule_cmp(rstate, policy, rule, modelname, mode):
     return result
 
 
-def branch_protection_patterns(policy, repo):
-    return policy.branch_protection_patterns(repo)
+def branch_protection_patterns(policy: Policy, repo_name: str) -> Collection[str]:
+    return policy.branch_protection_patterns(repo_name)
 
 
-def branch_protection_get(policy, repo, pattern):
-    return policy.branch_protection_get(repo, pattern)
+def branch_protection_get(policy: Policy, repo_name: str, pattern: str) -> BranchProtectionRule:
+    return policy.branch_protection_get(repo_name, pattern)
 
 
-def repo_excluded(policy: Policy, repo) -> bool:
+def repo_excluded(policy: Policy, repo: schema.Repo) -> bool:
     return policy.is_excluded(schema.repo_name(repo))
 
 
-def repo_in_scope(policy: Policy, repo) -> bool:
+def repo_in_scope(policy: Policy, repo: schema.Repo) -> bool:
     return not repo_excluded(policy, repo) and not (
         schema.repo_archived(repo)
         or schema.repo_forked(repo)
@@ -386,7 +449,10 @@ def perm_higher(perm1: Perm, perm2: Perm) -> bool:
     return perm2 != 'admin'
 
 
-def perm_highest(perm1: Perm, perm2: Perm) -> Perm:
+def perm_highest(perm1: Optional[Perm],
+                 perm2: Optional[Perm]) -> Optional[Perm]:
+    if not perm1 and not perm2:
+        return None
     if not perm1:
         return perm2
     if not perm2:
@@ -416,7 +482,7 @@ def team_repo_effective_perm(conf, policy: Policy, conf_team, repo) -> Optional[
     related_teams = config.team_ancestors(conf, conf_team)
     related_teams.add(config.team_name(conf_team))
     perms = [team_repo_explicit_perm(conf, policy, x, repo) for x in related_teams]
-    return reduce(perm_highest, perms)
+    return functools.reduce(perm_highest, perms)
 
 
 def team_repo_perm(conf, policy: Policy, team_name: str, repo: schema.Repo) -> Optional[Perm]:
