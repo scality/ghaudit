@@ -87,10 +87,24 @@ def team_short_str(team):
 @cli.command()
 def stats():
     rstate = cache.load()
-    print('teams: {}'.format(len(schema.org_teams(rstate))))
-    print('repositories: {}'.format(len(schema.org_repositories(rstate))))
-    print('members: {}'.format(len(schema.org_members(rstate))))
-    print('users: {}'.format(len(schema.users(rstate))))
+    teams = len(schema.org_teams(rstate))
+    repositories = len(schema.org_repositories(rstate))
+    members = len(schema.org_members(rstate))
+    users = len(schema.users(rstate))
+    bp_rules = len(schema.all_bp_rules(rstate))
+    print('teams: {}\n'
+          'repositories: {}\n'
+          'org members: {}\n'
+          'users: {}\n'
+          'branch protection rules: {}\n'
+          'total objects: {}'.format(
+              teams,
+              repositories,
+              members,
+              users,
+              bp_rules,
+              teams + repositories + members + users + bp_rules
+    ))
 
 
 def _common_list(list_func, mode, fmt, rstate=None):
