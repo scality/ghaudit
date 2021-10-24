@@ -350,9 +350,6 @@ def bprule_cmp(rstate: schema.Rstate,
                mode: BPRMode) -> List[str]:
     def cmp_bool_baseline(from_rule: bool, from_model: bool) -> bool:
         return (from_model and from_rule) or not from_model
-
-    def approval_cmp_baseline(from_rule: int, from_model: int) -> bool:
-        return not from_model or (from_rule >= from_model)
     model = policy.branch_protection_get_model(modelname)
     get_map = {
         'approvals': (
@@ -390,7 +387,7 @@ def bprule_cmp(rstate: schema.Rstate,
     }
     cmp_map = {
         'baseline': {
-            'approvals': approval_cmp_baseline,
+            'approvals': operator.ge,
             'owner approval': cmp_bool_baseline,
             'commit signatures': cmp_bool_baseline,
             'linear history': cmp_bool_baseline,
