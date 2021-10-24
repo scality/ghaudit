@@ -400,7 +400,7 @@ def bprule_cmp(rstate: schema.Rstate,
             'admin enforced': cmp_bool_baseline,
         },
         'strict': {
-            'approvals': approval_cmp_baseline,
+            'approvals': operator.eq,
             'owner approval': operator.eq,
             'commit signatures': operator.eq,
             'linear history': operator.eq,
