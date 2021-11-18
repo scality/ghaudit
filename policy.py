@@ -175,7 +175,7 @@ class Policy:
     def load_config(self, data: Mapping) -> None:
         if "repositories" in data:
             repos_config = data["repositories"]
-            if "exceptions" in repos_config:
+            if "exceptions" in repos_config and repos_config["exceptions"]:
                 for repo in repos_config["exceptions"]:
                     self.add_repository_blacklist(repo)
             if "default visibility" in repos_config:
