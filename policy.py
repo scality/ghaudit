@@ -14,37 +14,38 @@ from typing import Union
 from typing import Iterable
 from typing_extensions import TypedDict
 
+
 from ghaudit import schema
 from ghaudit import config
 from ghaudit import user_map
 
 Perm = Literal["read", "write", "admin"]
-BPRMode = Literal['baseline', 'strict']
+BPRMode = Literal["baseline", "strict"]
 Visibility = Literal["public", "private"]
-TeamAccessKey = NewType('TeamAccessKey', str)
-UserAccessKey = NewType('UserAccessKey', str)
+TeamAccessKey = NewType("TeamAccessKey", str)
+UserAccessKey = NewType("UserAccessKey", str)
 BPRModel_Requirements = TypedDict(
-    'BPRModel_Requirements',
+    "BPRModel_Requirements",
     {
-        'approvals': int,
-        'owner approval': bool,
-        'commit signatures': bool,
-        'linear history': bool,
+        "approvals": int,
+        "owner approval": bool,
+        "commit signatures": bool,
+        "linear history": bool,
         # 'status check': todo
-        'up to date': bool,
-    }
+        "up to date": bool,
+    },
 )
 # TODO import this from schema
-ActorType = Literal['User', 'Team']
+ActorType = Literal["User", "Team"]
 
 
 class UserActor(TypedDict):
-    type: Literal['User']
+    type: Literal["User"]
     login: str
 
 
 class TeamActor(TypedDict):
-    type: Literal['Team']
+    type: Literal["Team"]
     name: str
 
 
@@ -67,53 +68,56 @@ class BPRDeletionRestriction(TypedDict):
 
 
 BPRRestrictions = TypedDict(
-    'BPRRestrictions',
+    "BPRRestrictions",
     {
-        'push': BPRPushRestriction,
-        'dismiss review': BPRDismissReviewRestriction,
-        'deletion': BPRDeletionRestriction
-    }
+        "push": BPRPushRestriction,
+        "dismiss review": BPRDismissReviewRestriction,
+        "deletion": BPRDeletionRestriction,
+    },
 )
 BPRModel = TypedDict(
-    'BPRModel',
+    "BPRModel",
     {
-        'name': str,
-        'requirements': BPRModel_Requirements,
-        'admin enforced': bool,
-        'restrictions': BPRRestrictions
-    }
+        "name": str,
+        "requirements": BPRModel_Requirements,
+        "admin enforced": bool,
+        "restrictions": BPRRestrictions,
+    },
 )
-BranchProtectionRule = namedtuple('BranchProtectionRule', ['model', 'mode'])
+BranchProtectionRule = namedtuple("BranchProtectionRule", ["model", "mode"])
 
 
 class Policy:
     def __init__(self) -> None:
-        self._default_visibility = None     # type: Optional[Visibility]
-        self._repos = {}                    # type: MutableMapping[str, Optional[Visibility]]
-        self._repos_blacklist = []          # type: List[str]
-        self._team_access = {}              # type: MutableMapping[TeamAccessKey, Optional[Perm]]
-        self._user_access = {}              # type: MutableMapping[UserAccessKey, Perm]
-        self._branch_protection = {}        # type: MutableMapping[str, MutableMapping[str, BranchProtectionRule]]
+        self._default_visibility = None  # type: Optional[Visibility]
+        self._repos = {}  # type: MutableMapping[str, Optional[Visibility]]
+        self._repos_blacklist = []  # type: List[str]
+        self._team_access = {}  # type: MutableMapping[TeamAccessKey, Optional[Perm]]
+        self._user_access = {}  # type: MutableMapping[UserAccessKey, Perm]
+        self._branch_protection = (
+            {}
+        )  # type: MutableMapping[str, MutableMapping[str, BranchProtectionRule]]
         self._branch_protection_model = {}  # type: MutableMapping[str, BPRModel]
 
     @staticmethod
     def team_access_key(team: str, repo: str) -> TeamAccessKey:
-        return TeamAccessKey('{},{}'.format(team, repo))
+        return TeamAccessKey("{},{}".format(team, repo))
 
     @staticmethod
     def user_access_key(login: str, repo: str) -> UserAccessKey:
-        return UserAccessKey('{},{}'.format(login, repo))
+        return UserAccessKey("{},{}".format(login, repo))
 
     def add_merge_rule(self, rule) -> None:
-        logging.debug('loading rule {}'.format(rule['name']))
-        repos = rule['repositories']
-        if 'team access' in rule:
-            for level, teams in rule['team access'].items():
-                assert level in ['read', 'write', 'admin']
+        logging.debug("loading rule {}".format(rule["name"]))
+        repos = rule["repositories"]
+        if "team access" in rule:
+            for level, teams in rule["team access"].items():
+                assert level in ["read", "write", "admin"]
                 logging.debug(
-                    'adding rule part: name={} level={} for {} teams to {} repos'.format(
-                        rule['name'], level, len(teams), len(repos)
-                    ))
+                    "adding rule part: name={} level={} for {} teams to {} repos".format(
+                        rule["name"], level, len(teams), len(repos)
+                    )
+                )
                 for team in teams:
                     for repo in repos:
                         assert repo not in self._repos_blacklist
@@ -127,13 +131,11 @@ class Policy:
                         else:
                             self._team_access[key] = level
 
-        if 'branch protection rules' in rule:
-            for bprule in rule['branch protection rules']:
+        if "branch protection rules" in rule:
+            for bprule in rule["branch protection rules"]:
                 for repo in repos:
-                    value = BranchProtectionRule(
-                        bprule['model'], bprule['mode']
-                    )
-                    pattern = bprule['pattern']
+                    value = BranchProtectionRule(bprule["model"], bprule["mode"])
+                    pattern = bprule["pattern"]
                     if repo in self._branch_protection:
                         assert pattern not in self._branch_protection[repo]
                         self._branch_protection[repo][pattern] = value
@@ -141,22 +143,22 @@ class Policy:
                         self._branch_protection[repo] = {pattern: value}
 
     def add_repository_blacklist(self, repo: str) -> None:
+        logging.info("will ignore repository: {}".format(repo))
         assert repo not in self._repos
         self._repos_blacklist.append(repo)
 
     def add_repository(self, repo_data: Mapping) -> None:
-        name = repo_data['repo']
-        visibility = repo_data['visibility']
-        assert visibility in ['public', 'private']
+        name = repo_data["repo"]
+        visibility = repo_data["visibility"]
+        assert visibility in ["public", "private"]
         assert name not in self._repos_blacklist
         if name in self._repos:
             assert not self._repos[name] or self._repos[name] == visibility
         self._repos[name] = visibility
 
     def set_default_visibility(self, visibility: Visibility) -> None:
-        assert not self._default_visibility \
-            or self._default_visibility == visibility
-        assert visibility in ['private', 'public']
+        assert not self._default_visibility or self._default_visibility == visibility
+        assert visibility in ["private", "public"]
         self._default_visibility = visibility
 
     def sanity_check(self) -> None:
@@ -165,42 +167,40 @@ class Policy:
         # todo assert that either _default_visibility is not none,
         # or that every repository has an explicit visibility
         allbprules = functools.reduce(
-            lambda a, b: a + list(b.values()),
-            self._branch_protection.values(),
-            []
+            lambda a, b: a + list(b.values()), self._branch_protection.values(), []
         )  # type: List[BranchProtectionRule]
         for bprule in allbprules:
-            assert(bprule.model in self._branch_protection_model)
+            assert bprule.model in self._branch_protection_model
 
     def load_config(self, data: Mapping) -> None:
-        if 'repositories' in data:
-            repos_config = data['repositories']
-            if 'exceptions' in repos_config:
-                for repo in repos_config['exceptions']:
+        if "repositories" in data:
+            repos_config = data["repositories"]
+            if "exceptions" in repos_config:
+                for repo in repos_config["exceptions"]:
                     self.add_repository_blacklist(repo)
-            if 'default visibility' in repos_config:
-                value = repos_config['default visibility']
+            if "default visibility" in repos_config:
+                value = repos_config["default visibility"]
                 self.set_default_visibility(value)
-            for repo_data in repos_config['visibility']:
+            for repo_data in repos_config["visibility"]:
                 self.add_repository(repo_data)
 
-        if 'policy' in data:
-            if 'rules' in data['policy']:
-                for rule in data['policy']['rules']:
+        if "policy" in data:
+            if "rules" in data["policy"]:
+                for rule in data["policy"]["rules"]:
                     self.add_merge_rule(rule)
 
-            if 'exceptions' in data['policy']:
-                for perm_exception in data['policy']['exceptions']:
-                    repo = perm_exception['repo']
-                    login = perm_exception['user']
-                    perm = perm_exception['permissions']
+            if "exceptions" in data["policy"]:
+                for perm_exception in data["policy"]["exceptions"]:
+                    repo = perm_exception["repo"]
+                    login = perm_exception["user"]
+                    perm = perm_exception["permissions"]
                     key = Policy.user_access_key(login, repo)
                     assert repo not in self._repos_blacklist
                     self._user_access[key] = perm
 
-        if 'branch protection models' in data:
-            for model in data['branch protection models']:
-                name = model.pop('name')
+        if "branch protection models" in data:
+            for model in data["branch protection models"]:
+                name = model.pop("name")
                 self._branch_protection_model[name] = model
 
     def team_repo_perm(self, team: str, repo: str) -> Optional[Perm]:
@@ -222,8 +222,9 @@ class Policy:
         return None
 
     def repo_visibility(self, repo: str) -> Visibility:
-        visibility = self._repos[repo] if self._repos[repo] \
-            else self._default_visibility
+        visibility = (
+            self._repos[repo] if self._repos[repo] else self._default_visibility
+        )
         assert visibility
         return visibility
 
@@ -233,7 +234,8 @@ class Policy:
         return []
 
     def branch_protection_get(
-            self, repo_name: str, pattern: str) -> BranchProtectionRule:
+        self, repo_name: str, pattern: str
+    ) -> BranchProtectionRule:
         return self._branch_protection[repo_name][pattern]
 
     def branch_protection_get_model(self, modelname: str) -> BPRModel:
@@ -241,65 +243,64 @@ class Policy:
 
 
 def bprule_model_approvals(model: BPRModel) -> int:
-    return model['requirements']['approvals']
+    return model["requirements"]["approvals"]
 
 
 def bprule_model_owner_approval(model: BPRModel) -> bool:
-    return model['requirements']['owner approval']
+    return model["requirements"]["owner approval"]
 
 
 def bprule_model_commit_signatures(model: BPRModel) -> bool:
-    return model['requirements']['commit signatures']
+    return model["requirements"]["commit signatures"]
 
 
 def bprule_model_linear_history(model: BPRModel) -> bool:
-    return model['requirements']['linear history']
+    return model["requirements"]["linear history"]
 
 
 def bprule_model_admin_enforced(model: BPRModel) -> bool:
-    return model['admin enforced']
+    return model["admin enforced"]
 
 
 def bprule_model_restrict_pushes(model: BPRModel) -> bool:
-    return model['restrictions']['push']['enable']
+    return model["restrictions"]["push"]["enable"]
 
 
 def bprule_model_push_allowances(model: BPRModel) -> List[BPRPushAllowance]:
-    return model['restrictions']['push']['exceptions']
+    return model["restrictions"]["push"]["exceptions"]
 
 
-def bprule_model_push_allowance_type(
-        push_allowance: BPRPushAllowance) -> ActorType:
-    return push_allowance['type']
+def bprule_model_push_allowance_type(push_allowance: BPRPushAllowance) -> ActorType:
+    return push_allowance["type"]
 
 
 def bprule_model_push_allowance_user_login(push_allowance: UserActor) -> str:
-    return push_allowance['login']
+    return push_allowance["login"]
 
 
 def bprule_model_push_allowance_team_name(push_allowance: TeamActor) -> str:
-    return push_allowance['name']
+    return push_allowance["name"]
 
 
 def bprule_model_push_allowance_app_name(push_allowance):
-    return push_allowance['name']
+    return push_allowance["name"]
 
 
 def bprule_model_restrict_deletion(model: BPRModel) -> bool:
-    return model['restrictions']['deletion']['enable']
+    return model["restrictions"]["deletion"]["enable"]
 
 
-def cmp_actor(rstate: schema.Rstate,
-              from_rule: schema.PushAllowance,
-              from_model: BPRPushAllowance) -> bool:
+def cmp_actor(
+    rstate: schema.Rstate, from_rule: schema.PushAllowance, from_model: BPRPushAllowance
+) -> bool:
     get_map = {
-        'User': (
+        "User": (
             lambda x: schema.user_login(schema.actor_get_user(rstate, x)),
-            bprule_model_push_allowance_user_login
+            bprule_model_push_allowance_user_login,
         ),
-        'Team': (
+        "Team": (
             lambda x: schema.team_name(schema.actor_get_team(rstate, x)),
-            bprule_model_push_allowance_team_name
+            bprule_model_push_allowance_team_name,
         ),
         # TODO support app
         # 'App': (
@@ -311,10 +312,11 @@ def cmp_actor(rstate: schema.Rstate,
     from_rule_type = schema.actor_type(actor_from_rule)
     from_model_type = bprule_model_push_allowance_type(from_model)
     logging.debug(
-        'comparing {} and {}'.format({
-            'User': schema.actor_get_user,
-            'Team': schema.actor_get_team,
-            }[from_rule_type](rstate, actor_from_rule), from_model
+        "comparing {} and {}".format(
+            {"User": schema.actor_get_user, "Team": schema.actor_get_team,}[
+                from_rule_type
+            ](rstate, actor_from_rule),
+            from_model,
         )
     )
     if from_rule_type == from_model_type:
@@ -323,11 +325,12 @@ def cmp_actor(rstate: schema.Rstate,
     return False
 
 
-def cmp_actors_baseline(rstate: schema.Rstate,
-                        from_rules: Iterable[schema.PushAllowance],
-                        from_models: List[BPRPushAllowance]) -> bool:
-    logging.debug('cmp baseline models: {}, rules: {}'.format(
-        from_models, from_rules))
+def cmp_actors_baseline(
+    rstate: schema.Rstate,
+    from_rules: Iterable[schema.PushAllowance],
+    from_models: List[BPRPushAllowance],
+) -> bool:
+    logging.debug("cmp baseline models: {}, rules: {}".format(from_models, from_rules))
     for from_rule in from_rules:
         predicate = functools.partial(cmp_actor, rstate, from_rule)
         for matched in filter(predicate, from_models):
@@ -335,77 +338,75 @@ def cmp_actors_baseline(rstate: schema.Rstate,
     return not len(from_models) > 0
 
 
-def cmp_actors_strict(rstate: schema.Rstate,
-                      from_rules,
-                      from_models) -> bool:
+def cmp_actors_strict(rstate: schema.Rstate, from_rules, from_models) -> bool:
     if len(from_rules) != len(from_models):
         return False
     return cmp_actors_baseline(rstate, from_rules, from_models)
 
 
-def bprule_cmp(rstate: schema.Rstate,
-               policy: Policy,
-               rule: schema.BranchProtectionRuleNode,
-               modelname: str,
-               mode: BPRMode) -> List[str]:
+def bprule_cmp(
+    rstate: schema.Rstate,
+    policy: Policy,
+    rule: schema.BranchProtectionRuleNode,
+    modelname: str,
+    mode: BPRMode,
+) -> List[str]:
     def cmp_bool_baseline(from_rule: bool, from_model: bool) -> bool:
         return (from_model and from_rule) or not from_model
+
     model = policy.branch_protection_get_model(modelname)
     get_map = {
-        'approvals': (
-            schema.branch_protection_approvals,
-            bprule_model_approvals
-        ),
-        'owner approval': (
+        "approvals": (schema.branch_protection_approvals, bprule_model_approvals),
+        "owner approval": (
             schema.branch_protection_owner_approval,
-            bprule_model_owner_approval
+            bprule_model_owner_approval,
         ),
-        'commit signatures': (
+        "commit signatures": (
             schema.branch_protection_owner_approval,
-            bprule_model_owner_approval
+            bprule_model_owner_approval,
         ),
-        'linear history': (
+        "linear history": (
             schema.branch_protection_linear_history,
-            bprule_model_linear_history
+            bprule_model_linear_history,
         ),
-        'restrict pushes': (
+        "restrict pushes": (
             schema.branch_protection_restrict_pushes,
-            bprule_model_restrict_pushes
+            bprule_model_restrict_pushes,
         ),
-        'restrict deletion': (
+        "restrict deletion": (
             schema.branch_protection_restrict_deletion,
-            bprule_model_restrict_deletion
+            bprule_model_restrict_deletion,
         ),
-        'push allowances': (
+        "push allowances": (
             schema.branch_protection_push_allowances,
-            bprule_model_push_allowances
+            bprule_model_push_allowances,
         ),
-        'admin enforced': (
+        "admin enforced": (
             schema.branch_protection_admin_enforced,
-            bprule_model_admin_enforced
+            bprule_model_admin_enforced,
         ),
     }
     cmp_map = {
-        'baseline': {
-            'approvals': operator.ge,
-            'owner approval': cmp_bool_baseline,
-            'commit signatures': cmp_bool_baseline,
-            'linear history': cmp_bool_baseline,
-            'restrict pushes': cmp_bool_baseline,
-            'restrict deletion': cmp_bool_baseline,
-            'push allowances': lambda a, b: cmp_actors_baseline(rstate, a, b),
-            'admin enforced': cmp_bool_baseline,
+        "baseline": {
+            "approvals": operator.ge,
+            "owner approval": cmp_bool_baseline,
+            "commit signatures": cmp_bool_baseline,
+            "linear history": cmp_bool_baseline,
+            "restrict pushes": cmp_bool_baseline,
+            "restrict deletion": cmp_bool_baseline,
+            "push allowances": lambda a, b: cmp_actors_baseline(rstate, a, b),
+            "admin enforced": cmp_bool_baseline,
         },
-        'strict': {
-            'approvals': operator.eq,
-            'owner approval': operator.eq,
-            'commit signatures': operator.eq,
-            'linear history': operator.eq,
-            'restrict pushes': operator.eq,
-            'restrict deletion': operator.eq,
-            'push allowances': lambda a, b: cmp_actors_strict(rstate, a, b),
-            'admin enforced': operator.eq
-        }
+        "strict": {
+            "approvals": operator.eq,
+            "owner approval": operator.eq,
+            "commit signatures": operator.eq,
+            "linear history": operator.eq,
+            "restrict pushes": operator.eq,
+            "restrict deletion": operator.eq,
+            "push allowances": lambda a, b: cmp_actors_strict(rstate, a, b),
+            "admin enforced": operator.eq,
+        },
     }
     result = []
     for k, get in get_map.items():
@@ -414,13 +415,13 @@ def bprule_cmp(rstate: schema.Rstate,
     return result
 
 
-def branch_protection_patterns(
-        policy: Policy, repo_name: str) -> Collection[str]:
+def branch_protection_patterns(policy: Policy, repo_name: str) -> Collection[str]:
     return policy.branch_protection_patterns(repo_name)
 
 
 def branch_protection_get(
-        policy: Policy, repo_name: str, pattern: str) -> BranchProtectionRule:
+    policy: Policy, repo_name: str, pattern: str
+) -> BranchProtectionRule:
     return policy.branch_protection_get(repo_name, pattern)
 
 
@@ -430,8 +431,7 @@ def repo_excluded(policy: Policy, repo: schema.Repo) -> bool:
 
 def repo_in_scope(policy: Policy, repo: schema.Repo) -> bool:
     return not repo_excluded(policy, repo) and not (
-        schema.repo_archived(repo)
-        or schema.repo_forked(repo)
+        schema.repo_archived(repo) or schema.repo_forked(repo)
     )
 
 
@@ -441,43 +441,41 @@ def get_repos(policy: Policy) -> Collection[str]:
 
 def perm_translate(perm: str) -> Perm:
     perm_map = {
-        'READ': 'read',
-        'WRITE': 'write',
-        'ADMIN': 'admin'
+        "READ": "read",
+        "WRITE": "write",
+        "ADMIN": "admin",
     }  # type: Mapping[str, Perm]
     return perm_map[perm]
 
 
 # chek if perm1 is higher than perm2
 def perm_higher(perm1: Perm, perm2: Perm) -> bool:
-    assert perm1 in ['read', 'write', 'admin']
-    if perm1 == 'read':
+    assert perm1 in ["read", "write", "admin"]
+    if perm1 == "read":
         return False
-    if perm1 == 'write':
-        return perm2 == 'read'
+    if perm1 == "write":
+        return perm2 == "read"
     # then perm1 == 'admin'
-    return perm2 != 'admin'
+    return perm2 != "admin"
 
 
-def perm_highest(perm1: Optional[Perm],
-                 perm2: Optional[Perm]) -> Optional[Perm]:
+def perm_highest(perm1: Optional[Perm], perm2: Optional[Perm]) -> Optional[Perm]:
     if not perm1 and not perm2:
         return None
     if not perm1:
         return perm2
     if not perm2:
         return perm1
-    assert perm1 in ['read', 'write', 'admin']
-    assert perm2 in ['read', 'write', 'admin']
-    if 'admin' in [perm1, perm2]:
-        return 'admin'
-    if 'write' in [perm1, perm2]:
-        return 'write'
-    return 'read'
+    assert perm1 in ["read", "write", "admin"]
+    assert perm2 in ["read", "write", "admin"]
+    if "admin" in [perm1, perm2]:
+        return "admin"
+    if "write" in [perm1, perm2]:
+        return "write"
+    return "read"
 
 
-def team_repo_explicit_perm(
-        conf, policy: Policy, team_name, repo) -> Optional[Perm]:
+def team_repo_explicit_perm(conf, policy: Policy, team_name, repo) -> Optional[Perm]:
     """
     returns the permissions of a team as explicitly defined in the policy,
     without taking into account ancestors permissions
@@ -485,8 +483,7 @@ def team_repo_explicit_perm(
     return policy.team_repo_perm(team_name, schema.repo_name(repo))
 
 
-def team_repo_effective_perm(
-        conf, policy: Policy, conf_team, repo) -> Optional[Perm]:
+def team_repo_effective_perm(conf, policy: Policy, conf_team, repo) -> Optional[Perm]:
     """
     returns the effective permissions of a team, taking into account
     ancestors permissions
@@ -498,10 +495,8 @@ def team_repo_effective_perm(
 
 
 def team_repo_perm(
-        conf,
-        policy: Policy,
-        team_name: str,
-        repo: schema.Repo) -> Optional[Perm]:
+    conf, policy: Policy, team_name: str, repo: schema.Repo
+) -> Optional[Perm]:
     """
     returns the effective permission of a team if the repo
     is part of the policy.
@@ -513,11 +508,10 @@ def team_repo_perm(
     return team_repo_effective_perm(conf, policy, conf_team, repo)
 
 
-def user_perm(
-        conf, policy: Policy, usermap, repo, login: str) -> Optional[Perm]:
+def user_perm(conf, policy: Policy, usermap, repo, login: str) -> Optional[Perm]:
     email = user_map.email(usermap, login)
     if email and config.is_owner(conf, email):
-        return 'admin'
+        return "admin"
     user_access = policy.user_access(login, schema.repo_name(repo))
     if user_access:
         return user_access
@@ -539,21 +533,21 @@ def repo_visibility(policy: Policy, repo_name: str) -> Visibility:
 
 
 def test():
-    assert not perm_higher('admin', 'admin')
-    assert perm_higher('admin', 'write')
-    assert perm_higher('admin', 'read')
-    assert not perm_higher('write', 'admin')
-    assert not perm_higher('write', 'write')
-    assert perm_higher('write', 'read')
-    assert not perm_higher('read', 'admin')
-    assert not perm_higher('read', 'write')
-    assert not perm_higher('read', 'read')
-    assert perm_highest('admin', 'admin') == 'admin'
-    assert perm_highest('admin', 'write') == 'admin'
-    assert perm_highest('admin', 'read') == 'admin'
-    assert perm_highest('write', 'admin') == 'admin'
-    assert perm_highest('write', 'write') == 'write'
-    assert perm_highest('write', 'read') == 'write'
-    assert perm_highest('read', 'admin') == 'admin'
-    assert perm_highest('read', 'write') == 'write'
-    assert perm_highest('read', 'read') == 'read'
+    assert not perm_higher("admin", "admin")
+    assert perm_higher("admin", "write")
+    assert perm_higher("admin", "read")
+    assert not perm_higher("write", "admin")
+    assert not perm_higher("write", "write")
+    assert perm_higher("write", "read")
+    assert not perm_higher("read", "admin")
+    assert not perm_higher("read", "write")
+    assert not perm_higher("read", "read")
+    assert perm_highest("admin", "admin") == "admin"
+    assert perm_highest("admin", "write") == "admin"
+    assert perm_highest("admin", "read") == "admin"
+    assert perm_highest("write", "admin") == "admin"
+    assert perm_highest("write", "write") == "write"
+    assert perm_highest("write", "read") == "write"
+    assert perm_highest("read", "admin") == "admin"
+    assert perm_highest("read", "write") == "write"
+    assert perm_highest("read", "read") == "read"
