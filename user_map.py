@@ -1,26 +1,51 @@
-
+from typing import cast
 from typing import Optional
 from typing import Mapping
+from typing import MutableMapping
 from typing import Collection
+from typing_extensions import TypedDict
 
 
-def email(usermap: Collection[Mapping[str, str]], login: str) -> Optional[str]:
-    def login_filter(entry, login: str) -> bool:
-        return 'login' in entry and entry['login'] == login
-    elems = [x for x in usermap if login_filter(x, login)]
-    if not len(elems) <= 1:
-        print(elems)
-        assert len(elems) <= 1
-    if elems:
-        return elems[0]['email']
+class RawDataEntry(TypedDict):
+    email: str
+    login: str
+
+
+class RawData(TypedDict):
+    map: Collection[RawDataEntry]
+
+
+class MutableUserMap(TypedDict):
+    by_login: MutableMapping[str, str]
+    by_email: MutableMapping[str, str]
+
+
+class UserMap(TypedDict):
+    by_login: Mapping[str, str]
+    by_email: Mapping[str, str]
+
+
+def load(data: RawData) -> UserMap:
+    usermap = {"by_login": {}, "by_email": {}}  # type: MutableUserMap
+    for entry in data["map"]:
+        login = entry["login"]
+        email = entry["email"]
+        if login in usermap["by_login"]:
+            print("Error: duplicate login in usermap: {}".format(login))
+        if email in usermap["by_login"]:
+            print("Error: duplicate login in usermap: {}".format(login))
+        usermap["by_login"][login] = email
+        usermap["by_email"][email] = login
+    return cast(UserMap, usermap)
+
+
+def email(usermap: UserMap, login: str) -> Optional[str]:
+    if login in usermap["by_login"]:
+        return usermap["by_login"][login]
     return None
 
 
-def login(usermap: Collection[Mapping[str, str]], email: str) -> Optional[str]:
-    elems = [x for x in usermap if 'email' in x and x['email'] == email]
-    if not len(elems) <= 1:
-        print(elems)
-        assert len(elems) <= 1
-    if elems:
-        return elems[0]['login']
+def login(usermap: UserMap, email: str) -> Optional[str]:
+    if login in usermap["by_email"]:
+        return usermap["by_email"][email]
     return None

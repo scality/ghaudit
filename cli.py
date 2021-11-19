@@ -30,12 +30,13 @@ def cli(ctx, config_filename, usermap_filename, policy_filename):
     with open(config_filename, encoding="UTF-8") as conf_file:
         conf = YAML(typ="safe").load(conf_file)
     with open(usermap_filename, encoding="UTF-8") as usermap_file:
-        usermap = YAML(typ="safe").load(usermap_file)
+        usermap_data = YAML(typ="safe").load(usermap_file)
+        usermap = user_map.load(usermap_data)
     with open(policy_filename, encoding="UTF-8") as policy_file:
         policy_data = YAML(typ="safe").load(policy_file)
         policy_.load_config(policy_data)
     ctx.obj["config"] = conf
-    ctx.obj["usermap"] = usermap["map"]
+    ctx.obj["usermap"] = usermap
     policy_.sanity_check()
     ctx.obj["policy"] = policy_
 
