@@ -28,7 +28,8 @@ def cli(ctx, config_filename, usermap_filename, policy_filename):
     ctx.ensure_object(dict)
     policy_ = policy.Policy()
     with open(config_filename, encoding="UTF-8") as conf_file:
-        conf = YAML(typ="safe").load(conf_file)
+        config_data = YAML(typ="safe").load(conf_file)
+        conf = config.load(config_data)
     with open(usermap_filename, encoding="UTF-8") as usermap_file:
         usermap_data = YAML(typ="safe").load(usermap_file)
         usermap = user_map.load(usermap_data)
