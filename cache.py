@@ -1,8 +1,11 @@
 from os import environ
 from os import makedirs
 from os import path
+from os import rename
+from os import fsync
 import json
 from pathlib import Path
+import tempfile
 
 from ghaudit import schema
 from ghaudit.query.compound_query import CompoundQuery
@@ -42,8 +45,13 @@ def store(data):
     ofilepath = file_path()
     if not path.exists(ofilepath.parent):
         makedirs(ofilepath.parent)
-    with open(file_path(), mode='w') as cache_file:
-        return json.dump(data, cache_file)
+    temp_path = None
+    with tempfile.NamedTemporaryFile(dir=ofilepath.parent, delete=False) as output:
+        json.dump(data, output)
+        temp_path = output.name
+    rename(temp_path, ofilepath)
+    with open(ofilepath) as cache_file:
+        fsync(cache_file.fileno())
 
 
 def refresh(config, auth_driver):
