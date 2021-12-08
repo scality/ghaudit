@@ -75,15 +75,33 @@ ORG_MEMBERS_MAX = 90
 ORG_REPOSITORIES_MAX = 90
 
 
-def _sync_progress(data, query):
-    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-    print(query.stats())
-    print('teams: {}'.format(len(schema.org_teams(data))))
-    print('repositories: {}'.format(len(schema.org_repositories(data))))
-    print('members: {}'.format(len(schema.org_members(data))))
-    print('users: {}'.format(len(schema.users(data))))
-    print('branch protection rules: {}'.format(len(schema.all_bp_rules(data))))
-    print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+MAX_PARALLEL_QUERIES = 35
+def _sync_progress(data, query, found):
+    stats = query.stats()
+    print(
+        "\x1B[8A\x1b[K"
+        "total HTTP roundtrips: {}\n"
+        "graphQL queries: {} finished / {} total\n"
+        "teams: {} finished / {} discovered\n"
+        "repositories: {} finished / {} discovered\n"
+        "org members: {}\n"
+        "users: {}\n"
+        "branch protection rules: {} finished / {} discovered\n"
+        "errors: {}".format(
+            stats["iterations"],
+            stats["done"],
+            stats["queries"],
+            len(schema.org_teams(data)),
+            len(found["teams"]),
+            len(schema.org_repositories(data)),
+            len(found["repositories"]),
+            len(schema.org_members(data)),
+            len(schema.users(data)),
+            len(schema.all_bp_rules(data)),
+            len(found["bprules"]),
+            stats["errors"],
+        )
+    )
 
 
 def _sync(config, auth_driver):
@@ -98,6 +116,7 @@ def _sync(config, auth_driver):
         'repositoriesMax': ORG_REPOSITORIES_MAX,
     }
 
+    print("\n" * 7)
     query.add_frag(FRAG_PAGEINFO_FIELDS)
     query.append(OrgTeamsQuery())
     query.append(OrgMembersQuery())
@@ -150,6 +169,6 @@ def _sync(config, auth_driver):
             workaround2['bprules'] += 1
             found['bprules'].append(rule_id)
 
-        _sync_progress(data, query)
+        _sync_progress(data, query, found)
 
     return data
