@@ -59,3 +59,34 @@ def format_items(mode, items, formatter):
 
 def print_items(mode, items, formatter):
     print(format_items(mode, items, formatter))
+
+
+def progress_fmt_counter(name, value):
+    return '{}: {}'.format(name, value)
+
+
+def progress_fmt_pair(name, finished, total):
+    return '{}: {} / {}'.format(
+        name, finished, total
+    )
+
+
+def progress_fmt_queue(name, finished, started, total):
+    return '{}: {} finished / {} started / {} total\n'.format(
+        name, finished, started, total
+    )
+
+
+def progress_fmt_item(item):
+    return {
+        2: progress_fmt_counter,
+        3: progress_fmt_pair,
+        4: progress_fmt_queue
+    }[len(item)](*item)
+
+
+def progress_display(items):
+    result = '\x1B[{}A\x1b[K'.format(len(items))
+    for item in items:
+        result += progress_fmt_item(item) + '\n'
+    print(result)
