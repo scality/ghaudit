@@ -39,14 +39,14 @@ def load():
 
 
 def store(data):
+    ofilepath = file_path()
+    if not path.exists(ofilepath.parent):
+        makedirs(ofilepath.parent)
     with open(file_path(), mode='w') as cache_file:
         return json.dump(data, cache_file)
 
 
 def refresh(config, auth_driver):
-    ofilepath = file_path()
-    if not path.exists(ofilepath.parent):
-        makedirs(ofilepath.parent)
     data = _sync(config, auth_driver)
     print('validating cache')
     if schema.validate(data):
