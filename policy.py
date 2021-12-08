@@ -87,6 +87,15 @@ BPRModel = TypedDict(
 BranchProtectionRule = namedtuple("BranchProtectionRule", ["model", "mode"])
 
 
+def _find_duplicates(sequence, hash_func=None):
+    if hash_func:
+        sequence = map(hash_func, sequence)
+    first_seen = set()
+    first_seen_add = first_seen.add
+    duplicates = set(i for i in sequence if i in first_seen or first_seen_add(i))
+    return duplicates
+
+
 class Policy:
     def __init__(self) -> None:
         self._default_visibility = None  # type: Optional[Visibility]
@@ -110,6 +119,12 @@ class Policy:
     def add_merge_rule(self, rule) -> None:
         logging.debug("loading rule {}".format(rule["name"]))
         repos = rule["repositories"]
+
+        duplicates = _find_duplicates(repos)
+        if duplicates:
+            msg = 'Error: found duplicate repositories in the policy in rule "{}": {}'
+            raise RuntimeError(msg.format(rule["name"], duplicates))
+
         if "team access" in rule:
             for level, teams in rule["team access"].items():
                 assert level in ["read", "write", "admin"]
@@ -175,7 +190,21 @@ class Policy:
     def load_config(self, data: Mapping) -> None:
         if "repositories" in data:
             repos_config = data["repositories"]
+
+            duplicates = _find_duplicates(
+                repos_config["visibility"], lambda x: x["repo"]
+            )
+            if duplicates:
+                msg = "Error: found duplicate repositories in visibility policy: {}"
+                raise RuntimeError(msg.format(duplicates))
+
             if "exceptions" in repos_config and repos_config["exceptions"]:
+
+                duplicates = _find_duplicates(repos_config["exceptions"])
+                if duplicates:
+                    msg = "Error: found duplicate repositories in exceptions: {}"
+                    raise RuntimeError(msg.format(duplicates))
+
                 for repo in repos_config["exceptions"]:
                     self.add_repository_blacklist(repo)
             if "default visibility" in repos_config:
