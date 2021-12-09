@@ -6,32 +6,32 @@ import requests
 
 from ghaudit.query.utils import page_info_continue
 
-GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql'
+GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql"
 
 
 # TODO move this somewhere else
-def github_graphql_call(call_str, auth_driver, variables, session=requests.session()):
+def github_graphql_call(
+    call_str, auth_driver, variables, session=requests.session()
+):
     # print({'query': call_str, 'variables': json.dumps(variables)})
     result = session.post(
         GITHUB_GRAPHQL_ENDPOINT,
-        json={'query': call_str, 'variables': json.dumps(variables)},
-        headers=auth_driver()
+        json={"query": call_str, "variables": json.dumps(variables)},
+        headers=auth_driver(),
     )
     if result.status_code != 200:
         error_fmt = (
-            'Call failed to run by returning code of {}.'
-            'Error message: {}.'
-            'Query: {}'
+            "Call failed to run by returning code of {}."
+            "Error message: {}."
+            "Query: {}"
         )
-        raise Exception(error_fmt.format(
-            result.status_code,
-            result.text,
-            call_str[:200]
-        ))
+        raise Exception(
+            error_fmt.format(result.status_code, result.text, call_str[:200])
+        )
     return result.json()
 
 
-class CompoundQuery():
+class CompoundQuery:
     FRAG_ENTRY_MAIN = """
 query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% if not loop.last %}, {% endif %}{% endfor %}) {
     {%- for fragment in fragments %}
@@ -46,9 +46,9 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         self._max_parallel = max_parallel
         self._queue = []
         self._stats = {
-            'iterations': 0,
-            'queries': 0,
-            'done': 0,
+            "iterations": 0,
+            "queries": 0,
+            "done": 0,
         }
         self._session = requests.session()
 
@@ -61,24 +61,27 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         self._sub_queries.append(sub_query)
 
     def append(self, sub_query):
-        self._stats['queries'] += 1
+        self._stats["queries"] += 1
         if self._parallel_wait():
             self._queue.append(sub_query)
         else:
             self._sub_queries.append(sub_query)
 
     def render(self):
-        params = functools.reduce(lambda x, y: {**x, **y.params()}, self._sub_queries, {})
-        common_fragments = ''.join(self._common_frags)
+        params = functools.reduce(
+            lambda x, y: {**x, **y.params()}, self._sub_queries, {}
+        )
+        common_fragments = "".join(self._common_frags)
         fragments = [x.entry() for x in self._sub_queries]
-        main_frag = jinja2.Template(
-            CompoundQuery.FRAG_ENTRY_MAIN).render(
-                {
-                    'params': params,
-                    'fragments': fragments
-                }
-            )
-        sub_renders = ''.join([x.render({'page_infos': x.get_page_info()}) for x in self._sub_queries])
+        main_frag = jinja2.Template(CompoundQuery.FRAG_ENTRY_MAIN).render(
+            {"params": params, "fragments": fragments}
+        )
+        sub_renders = "".join(
+            [
+                x.render({"page_infos": x.get_page_info()})
+                for x in self._sub_queries
+            ]
+        )
         return common_fragments + sub_renders + main_frag
 
     def _dequeue(self):
@@ -98,24 +101,26 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
             # print(repr(sub_query))
             args = {**sub_query.params_values(), **args}
         # print(args)
-        self._stats['iterations'] += 1
-        result = github_graphql_call(rendered, auth_driver, args, self._session)
+        self._stats["iterations"] += 1
+        result = github_graphql_call(
+            rendered, auth_driver, args, self._session
+        )
         # print(result)
         # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
 
         # TODO maybe check for errors here
 
         to_remove = []
-        if 'data' not in result:
+        if "data" not in result:
             print(result)
             assert False
         for sub_query in self._sub_queries:
-            sub_query.update_page_info(result['data'])
+            sub_query.update_page_info(result["data"])
             if not page_info_continue(sub_query.get_page_info()):
                 to_remove.append(sub_query)
         for value in to_remove:
             self._sub_queries.remove(value)
-            self._stats['done'] += 1
+            self._stats["done"] += 1
         return result
 
     def finished(self):

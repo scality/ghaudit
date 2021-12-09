@@ -8,7 +8,9 @@ from typing import List
 from typing import Set
 from typing_extensions import TypedDict
 
-Team = TypedDict("Team", {"name": str, "members": List[str], "children": List[str]})
+Team = TypedDict(
+    "Team", {"name": str, "members": List[str], "children": List[str]}
+)
 Organisation = TypedDict(
     "Organisation", {"name": str, "owners": List[str], "teams": List[Team]}
 )
@@ -89,8 +91,8 @@ def team_parent(config: Config, team: Team) -> Optional[Team]:
 def team_ancestors(config: Config, team: Team) -> Set[str]:
     ancestors = set()
     parents = team_parents(config, team)
-    for team in parents:
-        ancestors.update(team_ancestors(config, team))
+    for parent in parents:
+        ancestors.update(team_ancestors(config, parent))
     ancestors.update(map(team_name, parents))
     return ancestors
 

@@ -10,8 +10,8 @@ from typing import Any
 from typing import Iterable
 from typing import cast
 from typing import MutableMapping
-from typing_extensions import TypedDict
 import logging
+from typing_extensions import TypedDict
 
 TeamRole = Literal["MEMBER", "MAINTAINER"]
 
@@ -224,7 +224,10 @@ def _get_org_members(rstate: Rstate) -> List[UserID]:
 
 
 def _get_x_by_y(
-    rstate: Rstate, seq_get: Callable[[Rstate], Iterable[Node]], key: str, value: Any
+    rstate: Rstate,
+    seq_get: Callable[[Rstate], Iterable[Node]],
+    key: str,
+    value: Any,
 ) -> Any:
     seq = seq_get(rstate)
     return [x for x in seq if x["node"][key] == value]
@@ -366,6 +369,7 @@ def team_repos(rstate: Rstate, team: Team) -> List[RepoWithPerms]:
             "permission": edge["permission"],
             "node": org_repo_by_id(rstate, edge["node"]["id"])["node"],
         }
+
     if "repositories" in team["node"] and team["node"]["repositories"]:
         repositories = team["node"]["repositories"]["edges"]
         return [mkobj(rstate, x) for x in repositories if x is not None]
@@ -450,7 +454,9 @@ def branch_protection_owner_approval(rule: BranchProtectionRuleNode) -> bool:
     return rule["requiresCodeOwnerReviews"]
 
 
-def branch_protection_commit_signatures(rule: BranchProtectionRuleNode) -> bool:
+def branch_protection_commit_signatures(
+    rule: BranchProtectionRuleNode,
+) -> bool:
     return rule["requiresCommitSignatures"]
 
 
@@ -462,7 +468,9 @@ def branch_protection_restrict_pushes(rule: BranchProtectionRuleNode) -> bool:
     return rule["restrictsPushes"]
 
 
-def branch_protection_restrict_deletion(rule: BranchProtectionRuleNode) -> bool:
+def branch_protection_restrict_deletion(
+    rule: BranchProtectionRuleNode,
+) -> bool:
     return not rule["allowsDeletions"]
 
 
@@ -548,7 +556,7 @@ def empty() -> Rstate:
 
 def merge_team(old_value: Team, new_value: Mapping) -> Team:
     result = old_value
-    logging.debug("merging teams old: {}, new: {}".format(old_value, new_value))
+    logging.debug("merging teams old: %s, new: %s", old_value, new_value)
     if "repositories" in old_value["node"]:
         repositories = old_value["node"]["repositories"]
     else:
@@ -561,7 +569,10 @@ def merge_team(old_value: Team, new_value: Mapping) -> Team:
         children = old_value["node"]["childTeams"]
     else:
         children = {"edges": []}
-    if "repositories" in new_value["node"] and new_value["node"]["repositories"]:
+    if (
+        "repositories" in new_value["node"]
+        and new_value["node"]["repositories"]
+    ):
         for item in new_value["node"]["repositories"]["edges"]:
             if item:
                 repositories["edges"].append(item)
@@ -576,18 +587,21 @@ def merge_team(old_value: Team, new_value: Mapping) -> Team:
     result["node"]["repositories"] = repositories
     result["node"]["members"] = members
     result["node"]["childTeams"] = children
-    logging.debug("merged team result: {}".format(result))
+    logging.debug("merged team result: %s", result)
     return result
 
 
 def merge_repo(old_value: Repo, new_value: Repo) -> Repo:
     result = old_value
-    logging.debug("merging repo old: {}, new: {}".format(old_value, new_value))
+    logging.debug("merging repo old: %s, new: %s", old_value, new_value)
     if "collaborators" in old_value["node"]:
         collaborators = old_value["node"]["collaborators"]
     else:
         collaborators = {"edges": []}
-    if "collaborators" in new_value["node"] and new_value["node"]["collaborators"]:
+    if (
+        "collaborators" in new_value["node"]
+        and new_value["node"]["collaborators"]
+    ):
         for item1 in new_value["node"]["collaborators"]["edges"]:
             if item1:
                 collaborators["edges"].append(item1)
@@ -607,15 +621,19 @@ def merge_repo(old_value: Repo, new_value: Repo) -> Repo:
 
     result["node"]["collaborators"] = collaborators
     result["node"]["branchProtectionRules"] = branch_protection_rules
-    logging.debug("merged repo result: {}".format(result))
+    logging.debug("merged repo result: %s", result)
     return result
 
 
-def merge_repo_branch_protection(repo: Repo, push_allowance: PushAllowance) -> Repo:
+def merge_repo_branch_protection(
+    repo: Repo, push_allowance: PushAllowance
+) -> Repo:
     assert "branchProtectionRules" in repo["node"]
     bprule_id = push_allowance["branchProtectionRule"]["id"]
     # del push_allowance['branchProtectionRule']
-    bprule = [x for x in repo_branch_protection_rules(repo) if x["id"] == bprule_id][0]
+    bprule = [
+        x for x in repo_branch_protection_rules(repo) if x["id"] == bprule_id
+    ][0]
     rules_filtered = [
         x for x in repo_branch_protection_rules(repo) if x["id"] != bprule_id
     ]
@@ -652,30 +670,42 @@ def merge(rstate, alias, new_data):
     for key in ["repositories", "teams", "membersWithRole"]:
         if key in new_data["data"]["organization"]:
             for item in new_data["data"]["organization"][key]["edges"]:
-                existing_item = funcs[key]["get_by_id"](rstate, item["node"]["id"])
+                existing_item = funcs[key]["get_by_id"](
+                    rstate, item["node"]["id"]
+                )
                 if existing_item:
                     edges = rstate["data"]["organization"][key]["edges"]
                     new_list = [
-                        x for x in edges if x["node"]["id"] != item["node"]["id"]
+                        x
+                        for x in edges
+                        if x["node"]["id"] != item["node"]["id"]
                     ]
                     new_list.append(funcs[key]["merge"](existing_item, item))
                     rstate["data"]["organization"][key]["edges"] = new_list
                 else:
                     funcs[key]["create"](rstate, item)
         if "pushAllowances" in new_data["data"]["organization"]:
-            for item in new_data["data"]["organization"]["pushAllowances"]["nodes"]:
+            for item in new_data["data"]["organization"]["pushAllowances"][
+                "nodes"
+            ]:
                 repo = org_repo_by_id(
                     rstate, item["branchProtectionRule"]["repository"]["id"]
                 )
                 edges = rstate["data"]["organization"]["repositories"]["edges"]
-                new_list = [x for x in edges if x["node"]["id"] != repo["node"]["id"]]
+                new_list = [
+                    x for x in edges if x["node"]["id"] != repo["node"]["id"]
+                ]
                 new_list.append(merge_repo_branch_protection(repo, item))
-                rstate["data"]["organization"]["repositories"]["edges"] = new_list
+                rstate["data"]["organization"]["repositories"][
+                    "edges"
+                ] = new_list
     if "repository" in new_data["data"]["organization"]:
         repo = new_data["data"]["organization"]["repository"]
         edges = rstate["data"]["organization"]["repositories"]["edges"]
         new_list = [x for x in edges if x["node"]["id"] != repo["id"]]
-        new_list.append(merge_repo(org_repo_by_id(rstate, repo["id"]), {"node": repo}))
+        new_list.append(
+            merge_repo(org_repo_by_id(rstate, repo["id"]), {"node": repo})
+        )
         rstate["data"]["organization"]["repositories"]["edges"] = new_list
     if "team" in new_data["data"]["organization"]:
         team = new_data["data"]["organization"]["team"]

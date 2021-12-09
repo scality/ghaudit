@@ -3,36 +3,39 @@ from collections import namedtuple
 import json
 
 
-Formatter = namedtuple('Formatter', 'table_fields to_fields to_string')
+Formatter = namedtuple("Formatter", "table_fields to_fields to_string")
 
 
 def _print_list_basic(elems, fmt):
     def format_entry(elem):
-        return ' * {}'.format(fmt.to_string(elem))
+        return " * {}".format(fmt.to_string(elem))
 
-    return reduce(lambda x, y: x + format_entry(y) + '\n', elems, '')
+    return reduce(lambda x, y: x + format_entry(y) + "\n", elems, "")
 
 
 def _print_list_table(elems, fmt):
     def mkline(cross_left, cross_middle, cross_right):
-        return cross_left \
-            + cross_middle.join(map(lambda x: ''.center(x[1], '─'),
-                                    fmt.table_fields)) \
-            + cross_right + '\n'
+        return (
+            cross_left
+            + cross_middle.join(
+                map(lambda x: "".center(x[1], "─"), fmt.table_fields)
+            )
+            + cross_right
+            + "\n"
+        )
 
     def format_entry(values):
-        return reduce(lambda x, y: x + str(y[0]).center(y[1]) + '│',
-                      values, '│')
+        return reduce(
+            lambda x, y: x + str(y[0]).center(y[1]) + "│", values, "│"
+        )
 
     def format_item(acc_str, item):
-        return acc_str + sep_line + format_entry(fmt.to_fields(item)) + '\n'
+        return acc_str + sep_line + format_entry(fmt.to_fields(item)) + "\n"
 
-    top = mkline('┌', '┬', '┐')
-    sep_line = mkline('├', '┼', '┤')
-    bottom = mkline('└', '┴', '┘')
-    header = top \
-        + format_entry(fmt.table_fields) \
-        + '\n'
+    top = mkline("┌", "┬", "┐")
+    sep_line = mkline("├", "┼", "┤")
+    bottom = mkline("└", "┴", "┘")
+    header = top + format_entry(fmt.table_fields) + "\n"
     return reduce(format_item, elems, header) + bottom
 
 
@@ -47,9 +50,9 @@ def _print_list_json(elems, fmt):
 
 def format_mode(mode):
     return {
-        'basic': _print_list_basic,
-        'json': _print_list_json,
-        'table': _print_list_table,
+        "basic": _print_list_basic,
+        "json": _print_list_json,
+        "table": _print_list_table,
     }[mode]
 
 

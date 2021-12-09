@@ -1,4 +1,3 @@
-
 import jinja2
 
 
@@ -20,16 +19,16 @@ class SubQueryCommon(SubQuery):
         return self._params
 
     def render(self, args):
-        template = ''.join(self._fragments)
+        template = "".join(self._fragments)
         return jinja2.Template(template).render(args)
 
     def update_page_info(self, response):
-        raise NotImplementedError('abstract function call')
+        raise NotImplementedError("abstract function call")
 
     def params_values(self):
         return self._values
 
     def __repr__(self):
-        return '{}({}): {}'.format(
+        return "{}({}): {}".format(
             self._entry, self._count, repr(self._page_info)
         )

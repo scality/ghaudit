@@ -1,4 +1,3 @@
-
 from ghaudit.query.sub_query_common import SubQueryCommon
 
 
@@ -38,14 +37,14 @@ fragment repositories on Query {
         SubQueryCommon.__init__(
             self,
             [OrgRepoQuery.FRAG_ORG_REPO_FIELDS, OrgRepoQuery.FRAG_ORG_REPO],
-            'repositories',
-            {'organisation': 'String!', 'repositoriesMax': 'Int!'}
+            "repositories",
+            {"organisation": "String!", "repositoriesMax": "Int!"},
         )
 
     def update_page_info(self, response):
-        if 'root' in response and 'repositories' in response['root']:
+        if "root" in response and "repositories" in response["root"]:
             if not self._page_info:
-                self._params['repositoriesCursor'] = 'String!'
-            self._page_info = response['root']['repositories']['pageInfo']
-            self._values['repositoriesCursor'] = self._page_info['endCursor']
+                self._params["repositoriesCursor"] = "String!"
+            self._page_info = response["root"]["repositories"]["pageInfo"]
+            self._values["repositoriesCursor"] = self._page_info["endCursor"]
             self._count += 1
