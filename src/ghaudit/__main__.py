@@ -3,11 +3,13 @@ import os
 from ghaudit.cli import cli
 
 
+LOGFILE = os.environ.get("LOGFILE")
+LOGLEVEL = os.environ.get("LOGLEVEL", "ERROR")
+LOG_FORMAT = "{asctime} {levelname:8s} ghaudit <{filename}:{lineno} {module}.{funcName}> {message}"  # noqa: E501
+STYLE = "{"
+
+
 def main():
-    LOGFILE = os.environ.get("LOGFILE")
-    LOGLEVEL = os.environ.get("LOGLEVEL", "ERROR")
-    LOG_FORMAT = "{asctime} {levelname:8s} ghaudit <{filename}:{lineno} {module}.{funcName}> {message}"  # noqa: E501
-    STYLE = "{"
     if LOGFILE:
         handler = logging.FileHandler(LOGFILE)
         formatter = logging.Formatter(LOG_FORMAT, style=STYLE)

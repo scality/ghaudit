@@ -406,7 +406,7 @@ def bprule_cmp(
 ) -> List[str]:
     def cmp_bool_baseline(from_rule: bool, from_model: bool) -> bool:
         # return (from_model and from_rule) or not from_model
-        return (from_rule if from_model else not from_model)
+        return from_rule if from_model else not from_model
 
     model = policy.branch_protection_get_model(modelname)
     get_map = {
@@ -543,6 +543,7 @@ def team_repo_explicit_perm(
     returns the permissions of a team as explicitly defined in the policy,
     without taking into account ancestors permissions
     """
+    del conf
     return policy.team_repo_perm(team_name, schema.repo_name(repo))
 
 
