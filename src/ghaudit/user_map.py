@@ -28,24 +28,24 @@ class UserMap(TypedDict):
 def load(data: RawData) -> UserMap:
     usermap = {"by_login": {}, "by_email": {}}  # type: MutableUserMap
     for entry in data["map"]:
-        login = entry["login"]
-        email = entry["email"]
-        if login in usermap["by_login"]:
-            print("Error: duplicate login in usermap: {}".format(login))
-        if email in usermap["by_login"]:
-            print("Error: duplicate login in usermap: {}".format(login))
-        usermap["by_login"][login] = email
-        usermap["by_email"][email] = login
+        new_login = entry["login"]
+        new_email = entry["email"]
+        if new_login in usermap["by_login"]:
+            print("Error: duplicate login in usermap: {}".format(new_login))
+        if new_email in usermap["by_login"]:
+            print("Error: duplicate login in usermap: {}".format(new_login))
+        usermap["by_login"][new_login] = new_email
+        usermap["by_email"][new_email] = new_login
     return cast(UserMap, usermap)
 
 
-def email(usermap: UserMap, login: str) -> Optional[str]:
-    if login in usermap["by_login"]:
-        return usermap["by_login"][login]
+def email(usermap: UserMap, user_login: str) -> Optional[str]:
+    if user_login in usermap["by_login"]:
+        return usermap["by_login"][user_login]
     return None
 
 
-def login(usermap: UserMap, email: str) -> Optional[str]:
-    if email in usermap["by_email"]:
-        return usermap["by_email"][email]
+def login(usermap: UserMap, user_email: str) -> Optional[str]:
+    if user_email in usermap["by_email"]:
+        return usermap["by_email"][user_email]
     return None

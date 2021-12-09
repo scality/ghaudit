@@ -1,5 +1,3 @@
-# https://realpython.com/primer-on-python-decorators/
-
 from typing import Optional
 
 from ghaudit import cache
@@ -49,6 +47,8 @@ def check_repo_unref(rstate, conf, policy_, repo: schema.Repo) -> bool:
 
     Ignore repositories that are implicitly out of scope
     """
+    del rstate
+    del conf
     name = schema.repo_name(repo)
     if name not in policy.get_repos(policy_) and policy.repo_in_scope(
         policy_, repo
@@ -61,6 +61,7 @@ def check_repo_unref(rstate, conf, policy_, repo: schema.Repo) -> bool:
 def check_repo_visibility(
     rstate: schema.Rstate, policy_: policy.Policy, repo: schema.Repo
 ) -> bool:
+    del rstate
     name = schema.repo_name(repo)
     if not policy.repo_in_scope(policy_, repo) or name not in policy.get_repos(
         policy_
@@ -87,6 +88,7 @@ def _check_team_repo_permissions(
     team: schema.Team,
     repo: schema.RepoWithPerms,
 ) -> bool:
+    del rstate
     name = schema.team_name(team)
     repo_name = schema.repo_name(repo)
     policy_perm = policy.team_repo_perm(
@@ -138,6 +140,7 @@ def check_team_members(
     policy_: policy.Policy,
     team: schema.Team,
 ) -> bool:
+    del policy_
     name = schema.team_name(team)
     conf_team = config.get_team(conf, name)
     success = True
@@ -230,6 +233,8 @@ def check_user(
     policy_: policy.Policy,
     user: schema.User,
 ) -> bool:
+    del rstate
+    del policy_
     result = True
     login = schema.user_login(user)
     email = user_map.email(usermap, login)
@@ -269,6 +274,7 @@ def check_missing_repos(
     rstate: schema.Rstate, conf, policy_: policy.Policy
 ) -> bool:
     """Check if a repository is part of the policy_, but does not exist"""
+    del conf
     for repo_name in policy.get_repos(policy_):
         if not schema.org_repo_by_name(rstate, repo_name):
             print('Error: repository "{}" does not exist'.format(repo_name))
@@ -278,6 +284,7 @@ def check_missing_teams(
     rstate: schema.Rstate, conf, policy_: policy.Policy
 ) -> bool:
     """Check if a team is part of the policy_, but does not exist"""
+    del policy_
     for team in config.get_teams(conf):
         name = config.team_name(team)
         if not schema.org_team_by_name(rstate, name):
@@ -287,6 +294,7 @@ def check_missing_teams(
 def check_repo_branch_protection(
     rstate: schema.Rstate, conf, policy_: policy.Policy, repo: schema.Repo
 ) -> bool:
+    del conf
     name = schema.repo_name(repo)
     patterns = policy.branch_protection_patterns(policy_, name)
     for pattern in patterns:
