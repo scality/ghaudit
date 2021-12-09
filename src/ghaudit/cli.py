@@ -15,10 +15,15 @@ from ghaudit import user_map
 
 @click.group()
 @click.option(
-    "-c", "--config", "config_filename", default=config.default_dir() / "scality.yml"
+    "-c",
+    "--config",
+    "config_filename",
+    default=config.default_dir() / "scality.yml",
 )
 @click.option(
-    "--user-map", "usermap_filename", default=config.default_dir() / "user map.yml"
+    "--user-map",
+    "usermap_filename",
+    default=config.default_dir() / "user map.yml",
 )
 @click.option(
     "--policy", "policy_filename", default=config.default_dir() / "policy.yml"
@@ -49,7 +54,9 @@ def compliance_group():
 @compliance_group.command("check-all")
 @click.pass_context
 def compliance_check_all(ctx):
-    compliance.check_all(ctx.obj["config"], ctx.obj["usermap"], ctx.obj["policy"])
+    compliance.check_all(
+        ctx.obj["config"], ctx.obj["usermap"], ctx.obj["policy"]
+    )
 
 
 @cli.group("cache")
@@ -72,7 +79,9 @@ def cache_refresh(ctx, token_pass_name):
 
 def user_short_str(user: schema.User) -> str:
     if schema.user_name(user):
-        return "{} ({})".format(schema.user_login(user), schema.user_name(user))
+        return "{} ({})".format(
+            schema.user_login(user), schema.user_name(user)
+        )
     return "{}".format(schema.user_login(user))
 
 
@@ -128,7 +137,10 @@ def org_repositories_group():
 
 @org_repositories_group.command("list")
 @click.option(
-    "--format", "mode", type=click.Choice(["basic", "json", "table"]), default="basic"
+    "--format",
+    "mode",
+    type=click.Choice(["basic", "json", "table"]),
+    default="basic",
 )
 def org_repositories_list(mode):
     _common_list(
@@ -155,7 +167,10 @@ def org_repositories_count():
 
 @org_repositories_group.command("branch-protection")
 @click.option(
-    "--format", "mode", type=click.Choice(["basic", "json", "table"]), default="basic"
+    "--format",
+    "mode",
+    type=click.Choice(["basic", "json", "table"]),
+    default="basic",
 )
 @click.argument("name")
 @click.pass_context
@@ -180,7 +195,12 @@ def org_repositories_branch_protection(ctx, name, mode):
             ),
             lambda x: (
                 (schema.branch_protection_pattern(x), 20),
-                (user_map.email(usermap, schema.branch_protection_creator(x)), 40),
+                (
+                    user_map.email(
+                        usermap, schema.branch_protection_creator(x)
+                    ),
+                    40,
+                ),
                 (schema.branch_protection_admin_enforced(x), 14),
                 (schema.branch_protection_approvals(x), 9),
                 (schema.branch_protection_owner_approval(x), 14),
@@ -201,7 +221,10 @@ def org_members_group():
 
 @org_members_group.command("list")
 @click.option(
-    "--format", "mode", type=click.Choice(["basic", "json", "table"]), default="basic"
+    "--format",
+    "mode",
+    type=click.Choice(["basic", "json", "table"]),
+    default="basic",
 )
 def org_members_list(mode):
     _common_list(
@@ -234,7 +257,10 @@ def org_teams_group():
 
 @org_teams_group.command("list")
 @click.option(
-    "--format", "mode", type=click.Choice(["basic", "json", "table"]), default="basic"
+    "--format",
+    "mode",
+    type=click.Choice(["basic", "json", "table"]),
+    default="basic",
 )
 def org_teams_list(mode):
     rstate = cache.load()
