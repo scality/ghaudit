@@ -46,6 +46,6 @@ def email(usermap: UserMap, login: str) -> Optional[str]:
 
 
 def login(usermap: UserMap, email: str) -> Optional[str]:
-    if login in usermap["by_email"]:
+    if email in usermap["by_email"]:
         return usermap["by_email"][email]
     return None
