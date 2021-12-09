@@ -3,7 +3,8 @@ import logging
 import os
 from ghaudit.cli import cli
 
-if __name__ == "__main__":
+
+def main():
     LOGFILE = os.environ.get("LOGFILE")
     LOGLEVEL = os.environ.get("LOGLEVEL", "ERROR")
     LOG_FORMAT = '{asctime} {levelname:8s} ghaudit <{filename}:{lineno} {module}.{funcName}> {message}'
@@ -21,3 +22,7 @@ if __name__ == "__main__":
         )
     # pylint: disable=no-value-for-parameter
     cli()
+
+
+if __name__ == "__main__":
+    main()

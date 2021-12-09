@@ -46,7 +46,7 @@ def store(data):
     if not path.exists(ofilepath.parent):
         makedirs(ofilepath.parent)
     temp_path = None
-    with tempfile.NamedTemporaryFile(dir=ofilepath.parent, delete=False) as output:
+    with tempfile.NamedTemporaryFile(mode="w+t",dir=ofilepath.parent, delete=False) as output:
         json.dump(data, output)
         temp_path = output.name
     rename(temp_path, ofilepath)
