@@ -1,7 +1,7 @@
 import logging
 import os
-from ghaudit.cli import cli
 
+from ghaudit.cli import cli
 
 LOGFILE = os.environ.get("LOGFILE")
 LOGLEVEL = os.environ.get("LOGLEVEL", "ERROR")

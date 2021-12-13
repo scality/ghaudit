@@ -3,14 +3,16 @@ from typing import Iterable
 import click
 from ruamel.yaml import YAML
 
-from ghaudit import cache
-from ghaudit import compliance
-from ghaudit import schema
-from ghaudit import auth
-from ghaudit import config
-from ghaudit import ui
-from ghaudit import policy
-from ghaudit import user_map
+from ghaudit import (
+    auth,
+    cache,
+    compliance,
+    config,
+    policy,
+    schema,
+    ui,
+    user_map,
+)
 
 
 @click.group()

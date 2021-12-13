@@ -1,23 +1,22 @@
 import functools
-from collections import namedtuple
-import operator
 import logging
+import operator
+from collections import namedtuple
+from typing import (
+    Collection,
+    Iterable,
+    List,
+    Literal,
+    Mapping,
+    MutableMapping,
+    NewType,
+    Optional,
+    Union,
+)
 
-from typing import Literal
-from typing import Optional
-from typing import Mapping
-from typing import MutableMapping
-from typing import NewType
-from typing import Collection
-from typing import List
-from typing import Union
-from typing import Iterable
 from typing_extensions import TypedDict
 
-
-from ghaudit import schema
-from ghaudit import config
-from ghaudit import user_map
+from ghaudit import config, schema, user_map
 
 Perm = Literal["read", "write", "admin"]
 BPRMode = Literal["baseline", "strict"]

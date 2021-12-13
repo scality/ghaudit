@@ -1,6 +1,5 @@
 import jinja2
 
-
 from ghaudit.query.sub_query import SubQuery
 
 

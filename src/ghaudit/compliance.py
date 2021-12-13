@@ -1,10 +1,6 @@
 from typing import Optional
 
-from ghaudit import cache
-from ghaudit import config
-from ghaudit import policy
-from ghaudit import schema
-from ghaudit import user_map
+from ghaudit import cache, config, policy, schema, user_map
 
 
 def error(msg: str) -> None:
