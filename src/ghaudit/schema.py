@@ -1,16 +1,19 @@
-from typing import Literal
-from typing import Optional
-from typing import Hashable
-from typing import Mapping
-from typing import Collection
-from typing import List
-from typing import Set
-from typing import Callable
-from typing import Any
-from typing import Iterable
-from typing import cast
-from typing import MutableMapping
 import logging
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Hashable,
+    Iterable,
+    List,
+    Literal,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Set,
+    cast,
+)
+
 from typing_extensions import TypedDict
 
 TeamRole = Literal["MEMBER", "MAINTAINER"]

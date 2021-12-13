@@ -1,8 +1,5 @@
-from typing import cast
-from typing import Optional
-from typing import Mapping
-from typing import MutableMapping
-from typing import Collection
+from typing import Collection, Mapping, MutableMapping, Optional, cast
+
 from typing_extensions import TypedDict
 
 

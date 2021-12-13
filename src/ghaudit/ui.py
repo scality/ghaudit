@@ -1,7 +1,6 @@
-from functools import reduce
-from collections import namedtuple
 import json
-
+from collections import namedtuple
+from functools import reduce
 
 Formatter = namedtuple("Formatter", "table_fields to_fields to_string")
 

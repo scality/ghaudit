@@ -1,11 +1,8 @@
+from functools import reduce
 from os import environ
 from pathlib import Path
-from functools import reduce
+from typing import Collection, List, Optional, Set
 
-from typing import Collection
-from typing import Optional
-from typing import List
-from typing import Set
 from typing_extensions import TypedDict
 
 Team = TypedDict(
