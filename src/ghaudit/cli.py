@@ -44,7 +44,6 @@ def cli(ctx, config_filename, usermap_filename, policy_filename):
         policy_.load_config(policy_data)
     ctx.obj["config"] = conf
     ctx.obj["usermap"] = usermap
-    policy_.sanity_check()
     ctx.obj["policy"] = policy_
 
 
