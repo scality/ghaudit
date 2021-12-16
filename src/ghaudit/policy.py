@@ -112,6 +112,7 @@ class Policy:
         self._branch_protection_model = (
             {}
         )  # type: MutableMapping[str, BPRModel]
+        self._error_policy = []  # type: List[str]
 
     @staticmethod
     def team_access_key(team: str, repo: str) -> TeamAccessKey:
@@ -123,16 +124,20 @@ class Policy:
 
     def add_merge_rule(self, rule) -> None:
         logging.debug("loading rule %s", rule["name"])
+
+        if "team access" not in rule or "branch protection rules" not in rule:
+            print("Warning rules empty")
+
         repos = rule["repositories"]
 
         duplicates = _find_duplicates(repos)
         if duplicates:
-            msg = 'Error: found duplicate repositories in the policy in rule "{}": {}'  # noqa: E501
-            raise RuntimeError(msg.format(rule["name"], duplicates))
+            msg = 'Error: found duplicate repositories in the policy in rule "{}": {} 1'  # noqa: E501
+            msg = msg.format(rule["name"], duplicates)
+            self._error_policy.append(msg)
 
         if "team access" in rule:
             for level, teams in rule["team access"].items():
-                assert level in ["read", "write", "admin"]
                 logging.debug(
                     "adding rule part: name=%s level=%s for %s teams to %s repos",
                     rule["name"],
@@ -140,9 +145,13 @@ class Policy:
                     len(teams),
                     len(repos),
                 )
+                if level not in ["read", "write", "admin"]:
+                    msg = "Error: invalid access level ({}) in rule {} 2"
+                    msg = msg.format(level, rule["name"])
+                    self._error_policy.append(msg)
+                    continue
                 for team in teams:
                     for repo in repos:
-                        assert repo not in self._repos_blacklist
                         if repo not in self._repos:
                             self._repos[repo] = None
                         key = Policy.team_access_key(team, repo)
@@ -161,36 +170,57 @@ class Policy:
                     )
                     pattern = bprule["pattern"]
                     if repo in self._branch_protection:
-                        assert pattern not in self._branch_protection[repo]
+                        if pattern in self._branch_protection[repo]:
+                            msg = "Error: pattern {} found in branch protection for repo: {} 4"
+                            msg = msg.format(pattern, repo)
+                            self._error_policy.append(msg)
+                            continue
                         self._branch_protection[repo][pattern] = value
                     else:
                         self._branch_protection[repo] = {pattern: value}
 
     def add_repository_blacklist(self, repo: str) -> None:
         logging.info("will ignore repository: %s", repo)
-        assert repo not in self._repos
         self._repos_blacklist.append(repo)
 
     def add_repository(self, repo_data: Mapping) -> None:
         name = repo_data["repo"]
         visibility = repo_data["visibility"]
-        assert visibility in ["public", "private"]
-        assert name not in self._repos_blacklist
+        if visibility not in ["public", "private"]:
+            msg = "Error: invalid visibility ({}) for repo: {} 6"
+            msg = msg.format(visibility, name)
+            self._error_policy.append(msg)
+
         if name in self._repos:
-            assert not self._repos[name] or self._repos[name] == visibility
+            if (
+                self._repos[name] or self._repos[name] != visibility
+            ):  # assert not self._repos[name] or self._repos[name] == visibility
+                msg = "Error: repo: {} duplicated in repositories 8"
+                msg = msg.format(name)
+                self._error_policy.append(msg)
+
         self._repos[name] = visibility
 
     def set_default_visibility(self, visibility: Visibility) -> None:
-        assert (
-            not self._default_visibility
-            or self._default_visibility == visibility
-        )
-        assert visibility in ["private", "public"]
+        if self._default_visibility and self._default_visibility != visibility:
+            msg = "Error: idk to day {} 9"
+            msg = msg.format(visibility)
+            self._error_policy.append(msg)
+
+        if visibility not in ["private", "public"]:
+            msg = "Error: invalid visibility ({}) 10"
+            msg = msg.format(visibility)
+            self._error_policy.append(msg)
+
         self._default_visibility = visibility
 
     def sanity_check(self) -> None:
         intersection = [v for v in self._repos if v in self._repos_blacklist]
-        assert not intersection
+        if intersection:
+            msg = "Error: intersection {} to be change for futur 11"
+            msg = msg.format(intersection)
+            self._error_policy.append(msg)
+            # return
         # todo assert that either _default_visibility is not none,
         # or that every repository has an explicit visibility
         allbprules = functools.reduce(
@@ -199,7 +229,10 @@ class Policy:
             [],
         )  # type: List[BranchProtectionRule]
         for bprule in allbprules:
-            assert bprule.model in self._branch_protection_model
+            if bprule.model not in self._branch_protection_model:
+                msg = "Error: invalide rule: {} 12"
+                msg = msg.format(bprule)
+                self._error_policy.append(msg)
 
     def load_config(self, data: Mapping) -> None:
         if "repositories" in data:
@@ -209,25 +242,38 @@ class Policy:
                 repos_config["visibility"], lambda x: x["repo"]
             )
             if duplicates:
-                msg = "Error: found duplicate repositories in visibility policy: {}"  # noqa: E501
-                raise RuntimeError(msg.format(duplicates))
+                msg = "Error: found duplicate repositories in visibility policy: {} 13"  # noqa: E501
+                msg = msg.format(duplicates)
+                self._error_policy.append(msg)
 
-            if "exceptions" in repos_config and repos_config["exceptions"]:
-
-                duplicates = _find_duplicates(repos_config["exceptions"])
-                if duplicates:
-                    msg = (
-                        "Error: found duplicate repositories in exceptions: {}"
-                    )
-                    raise RuntimeError(msg.format(duplicates))
-
-                for repo in repos_config["exceptions"]:
-                    self.add_repository_blacklist(repo)
             if "default visibility" in repos_config:
                 value = repos_config["default visibility"]
                 self.set_default_visibility(value)
             for repo_data in repos_config["visibility"]:
                 self.add_repository(repo_data)
+
+            if "exceptions" in repos_config and repos_config["exceptions"]:
+                duplicates = _find_duplicates(repos_config["exceptions"])
+                if duplicates:
+                    msg = "Error: found duplicate repositories in exceptions: {} 14"
+                    msg = msg.format(duplicates)
+                    self._error_policy.append(msg)
+
+                for repo in repos_config["exceptions"]:
+                    self.add_repository_blacklist(repo)
+
+            for repo in repos_config["exceptions"]:
+                if repo in self._repos:
+                    msg = "Error: repo {} dulpicated in repositories and exceptions 5=5"
+                    msg = msg.format(repo)
+                    self._error_policy.append(msg)
+
+            for repo_data in repos_config["visibility"]:
+                name = repo_data["repo"]
+                if name in self._repos_blacklist:
+                    msg = "Error: repo: {} found in visibility 7=7"
+                    msg = msg.format(name)
+                    self._error_policy.append(msg)
 
         if "policy" in data:
             if "rules" in data["policy"]:
@@ -240,13 +286,24 @@ class Policy:
                     login = perm_exception["user"]
                     perm = perm_exception["permissions"]
                     key = Policy.user_access_key(login, repo)
-                    assert repo not in self._repos_blacklist
+                    if repo in self._repos_blacklist:
+                        msg = "Error: repo {} found in blacklist 15"
+                        msg = msg.format(repo)
+                        self._error_policy.append(msg)
+                        continue
                     self._user_access[key] = perm
 
         if "branch protection models" in data:
             for model in data["branch protection models"]:
                 name = model.pop("name")
                 self._branch_protection_model[name] = model
+
+        self.sanity_check()
+        self.fetch_error_policy()
+
+    def fetch_error_policy(self):
+        if len(self._error_policy) > 0:
+            raise RuntimeError(" \n".join(self._error_policy))
 
     def team_repo_perm(self, team: str, repo: str) -> Optional[Perm]:
         key = Policy.team_access_key(team, repo)
