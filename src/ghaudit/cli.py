@@ -15,6 +15,27 @@ from ghaudit import (
 )
 
 
+def load_organisation_conf(filename):
+    with open(filename, encoding="UTF-8") as conf_file:
+        conf = YAML(typ="safe").load(conf_file)
+    return conf
+
+
+def load_user_map_conf(filename):
+    with open(filename, encoding="UTF-8") as usermap_file:
+        usermap_data = YAML(typ="safe").load(usermap_file)
+        usermap = user_map.load(usermap_data)
+    return usermap
+
+
+def load_policy_conf(filename):
+    policy_ = policy.Policy()
+    with open(filename, encoding="UTF-8") as policy_file:
+        policy_data = YAML(typ="safe").load(policy_file)
+        policy_.load_config(policy_data)
+    return policy_
+
+
 @click.group()
 @click.option(
     "-c",
@@ -33,18 +54,9 @@ from ghaudit import (
 @click.pass_context
 def cli(ctx, config_filename, usermap_filename, policy_filename):
     ctx.ensure_object(dict)
-    policy_ = policy.Policy()
-    with open(config_filename, encoding="UTF-8") as conf_file:
-        conf = YAML(typ="safe").load(conf_file)
-    with open(usermap_filename, encoding="UTF-8") as usermap_file:
-        usermap_data = YAML(typ="safe").load(usermap_file)
-        usermap = user_map.load(usermap_data)
-    with open(policy_filename, encoding="UTF-8") as policy_file:
-        policy_data = YAML(typ="safe").load(policy_file)
-        policy_.load_config(policy_data)
-    ctx.obj["config"] = conf
-    ctx.obj["usermap"] = usermap
-    ctx.obj["policy"] = policy_
+    ctx.obj["config"] = lambda: load_organisation_conf(config_filename)
+    ctx.obj["usermap"] = lambda: load_user_map_conf(usermap_filename)
+    ctx.obj["policy"] = lambda: load_policy_conf(policy_filename)
 
 
 @cli.group("compliance")
@@ -56,7 +68,7 @@ def compliance_group():
 @click.pass_context
 def compliance_check_all(ctx):
     compliance.check_all(
-        ctx.obj["config"], ctx.obj["usermap"], ctx.obj["policy"]
+        ctx.obj["config"](), ctx.obj["usermap"](), ctx.obj["policy"]()
     )
 
 
@@ -75,7 +87,7 @@ def cache_path():
 @click.pass_context
 def cache_refresh(ctx, token_pass_name):
     auth_driver = auth.github_auth_token_passpy(token_pass_name)
-    cache.refresh(ctx.obj["config"], auth_driver)
+    cache.refresh(ctx.obj["config"](), auth_driver)
 
 
 def user_short_str(user: schema.User) -> str:
@@ -177,7 +189,7 @@ def org_repositories_count():
 @click.pass_context
 def org_repositories_branch_protection(ctx, name, mode):
     rstate = cache.load()
-    usermap = ctx.obj["usermap"]
+    usermap = ctx.obj["usermap"]()
     repo = schema.org_repo_by_name(rstate, name)
     _common_list(
         lambda _: schema.repo_branch_protection_rules(repo),
@@ -445,14 +457,14 @@ def usermap_group():
 @click.argument("email")
 @click.pass_context
 def usermap_get_login(ctx, email):
-    print(user_map.login(ctx.obj["usermap"], email))
+    print(user_map.login(ctx.obj["usermap"](), email))
 
 
 @usermap_group.command("get-email")
 @click.argument("login")
 @click.pass_context
 def usermap_get_email(ctx, login):
-    print(user_map.email(ctx.obj["usermap"], login))
+    print(user_map.email(ctx.obj["usermap"](), login))
 
 
 @cli.command("test")
