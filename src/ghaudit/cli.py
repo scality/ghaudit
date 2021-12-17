@@ -20,7 +20,7 @@ from ghaudit import (
     "-c",
     "--config",
     "config_filename",
-    default=config.default_dir() / "scality.yml",
+    default=config.default_dir() / "organisation.yml",
 )
 @click.option(
     "--user-map",
@@ -71,7 +71,7 @@ def cache_path():
 
 
 @cache_group.command("refresh")
-@click.option("--token-pass-name", default="scality/ghaudit-token")
+@click.option("--token-pass-name", default="ghaudit/github-token")
 @click.pass_context
 def cache_refresh(ctx, token_pass_name):
     auth_driver = auth.github_auth_token_passpy(token_pass_name)
