@@ -125,6 +125,7 @@ ActorType = Literal["User", "Team"]
 
 class Actor(TypedDict):
     id: Hashable
+    # pylint: disable=unused-private-member
     __typename: ActorType
 
 
@@ -740,9 +741,9 @@ def missing_collaborators(rstate: Rstate, repo: Repo) -> List[str]:
 
 
 def validate(rstate: Rstate) -> bool:
-    # * all repos referenced by teams should be known
+    # * all repositories referenced by teams should be known
     # * all users referenced by teams should be known
-    # * all users referenced by repos should be known
+    # * all users referenced by repositories should be known
     # for team in org_teams(rstate):
     for repo in org_repositories(rstate):
         for missing in missing_collaborators(rstate, repo):
