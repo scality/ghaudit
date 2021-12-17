@@ -17,6 +17,7 @@ from typing import (
 from typing_extensions import TypedDict
 
 TeamRole = Literal["MEMBER", "MAINTAINER"]
+OrgRole = Literal["MEMBER", "ADMIN"]
 
 UserID = Hashable
 TeamID = Hashable
@@ -95,6 +96,10 @@ class UserWithRole(User):
     role: TeamRole
 
 
+class UserWithOrgRole(User):
+    role: OrgRole
+
+
 class RepoCollaborator(TypedDict):
     # todo be more specific
     role: str
@@ -141,6 +146,10 @@ class PushAllowance(TypedDict):
     # ...
 
 
+class BranchProtectionRuleCreator(TypedDict):
+    login: str
+
+
 class BranchProtectionRuleNode(TypedDict):
     id: BranchProtectionRuleID
     pattern: str
@@ -154,6 +163,7 @@ class BranchProtectionRuleNode(TypedDict):
     restrictsReviewDismissals: bool
     allowsDeletions: bool
     pushAllowances: List[PushAllowance]
+    creator: BranchProtectionRuleCreator
 
 
 class BranchProtectionRules(TypedDict):
@@ -192,7 +202,7 @@ class Organisation(TypedDict):
 
 class RstateData(TypedDict):
     organization: Organisation
-    users: MutableMapping[UserID, User]
+    users: MutableMapping[UserID, UserWithOrgRole]
 
 
 class Rstate(TypedDict):
@@ -247,15 +257,17 @@ def _get_unique_x_by_y(rstate: Rstate, seq_get, key: str, value):
 # users queries
 
 
-def user_by_login(rstate: Rstate, login: str) -> str:
+def user_by_login(rstate: Rstate, login: str) -> UserWithOrgRole:
     return _get_unique_x_by_y(rstate, users, "login", login)
 
 
-def _user_by_id_noexcept(rstate: Rstate, user_id: UserID) -> Optional[User]:
+def _user_by_id_noexcept(
+    rstate: Rstate, user_id: UserID
+) -> Optional[UserWithOrgRole]:
     return rstate["data"]["users"].get(user_id)
 
 
-def user_by_id(rstate: Rstate, user_id: UserID) -> User:
+def user_by_id(rstate: Rstate, user_id: UserID) -> UserWithOrgRole:
     user = _user_by_id_noexcept(rstate, user_id)
     assert user
     return user
@@ -276,7 +288,7 @@ def org_teams(rstate: Rstate) -> List[Team]:
     return _get_org_teams(rstate)
 
 
-def org_members(rstate: Rstate) -> List[User]:
+def org_members(rstate: Rstate) -> List[UserWithOrgRole]:
     return [user_by_id(rstate, x) for x in _get_org_members(rstate)]
 
 
@@ -428,7 +440,7 @@ def user_company(user: User) -> str:
     return user["node"]["company"]
 
 
-def user_is_owner(user: User) -> bool:
+def user_is_owner(user: UserWithOrgRole) -> bool:
     return "role" in user and user["role"] == "ADMIN"
 
 
@@ -477,7 +489,7 @@ def branch_protection_restrict_deletion(
     return not rule["allowsDeletions"]
 
 
-def branch_protection_creator(rule):
+def branch_protection_creator(rule: BranchProtectionRuleNode) -> str:
     return rule["creator"]["login"]
 
 
@@ -533,7 +545,7 @@ def _user_create(rstate: Rstate, user: Mapping) -> Rstate:
     assert "email" in user["node"]
     assert isinstance(user["node"]["id"], Hashable)
     user_id = user["node"].pop("id")
-    rstate["data"]["users"][user_id] = cast(User, user)
+    rstate["data"]["users"][user_id] = cast(UserWithOrgRole, user)
     return rstate
 
 

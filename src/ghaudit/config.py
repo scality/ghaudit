@@ -81,7 +81,7 @@ def team_parent(config: Config, team: Team) -> Optional[Team]:
     elems = team_parents(config, team)
     assert len(elems) <= 1
     if elems:
-        return elems[0]
+        return next(iter(elems))
     return None
 
 

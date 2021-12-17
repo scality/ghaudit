@@ -15,14 +15,17 @@ def user_str(login: str, username: Optional[str], email: Optional[str]) -> str:
 
 
 def check_team_unref(
-    rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team
+    rstate: schema.Rstate,
+    conf: config.Config,
+    policy_: policy.Policy,
+    team: schema.Team,
 ) -> bool:
     """Check if team is referenced in config
 
     Ignore teams that do not have access to repositories in scope
     """
 
-    def in_scope(repo):
+    def in_scope(repo: schema.Repo) -> bool:
         return policy.repo_in_scope(policy_, repo)
 
     name = schema.team_name(team)
@@ -38,7 +41,12 @@ def check_team_unref(
     return True
 
 
-def check_repo_unref(rstate, conf, policy_, repo: schema.Repo) -> bool:
+def check_repo_unref(
+    rstate: schema.Rstate,
+    conf: config.Config,
+    policy_: policy.Policy,
+    repo: schema.Repo,
+) -> bool:
     """Check if repository is referenced in the policy
 
     Ignore repositories that are implicitly out of scope
@@ -79,7 +87,7 @@ def check_repo_visibility(
 
 def _check_team_repo_permissions(
     rstate: schema.Rstate,
-    conf,
+    conf: config.Config,
     policy_: policy.Policy,
     team: schema.Team,
     repo: schema.RepoWithPerms,
@@ -116,7 +124,10 @@ def _check_team_repo_permissions(
 
 
 def check_team_permissions(
-    rstate: schema.Rstate, conf, policy_: policy.Policy, team: schema.Team
+    rstate: schema.Rstate,
+    conf: config.Config,
+    policy_: policy.Policy,
+    team: schema.Team,
 ) -> bool:
     repositories = schema.team_repos(rstate, team)
     success = True
@@ -131,8 +142,8 @@ def check_team_permissions(
 
 def check_team_members(
     rstate: schema.Rstate,
-    conf,
-    usermap,
+    conf: config.Config,
+    usermap: user_map.UserMap,
     policy_: policy.Policy,
     team: schema.Team,
 ) -> bool:
@@ -173,8 +184,8 @@ def check_team_members(
 
 def check_repo_collaborators(
     rstate: schema.Rstate,
-    conf,
-    usermap,
+    conf: config.Config,
+    usermap: user_map.UserMap,
     policy_: policy.Policy,
     repo: schema.Repo,
 ) -> bool:
@@ -224,10 +235,10 @@ def check_repo_collaborators(
 
 def check_user(
     rstate: schema.Rstate,
-    conf,
-    usermap,
+    conf: config.Config,
+    usermap: user_map.UserMap,
     policy_: policy.Policy,
-    user: schema.User,
+    user: schema.UserWithOrgRole,
 ) -> bool:
     del rstate
     del policy_
@@ -267,30 +278,40 @@ def check_user(
 
 
 def check_missing_repos(
-    rstate: schema.Rstate, conf, policy_: policy.Policy
+    rstate: schema.Rstate, conf: config.Config, policy_: policy.Policy
 ) -> bool:
     """Check if a repository is part of the policy_, but does not exist"""
     del conf
+    errors = False
     for repo_name in policy.get_repos(policy_):
         if not schema.org_repo_by_name(rstate, repo_name):
             print('Error: repository "{}" does not exist'.format(repo_name))
+            errors = True
+    return errors
 
 
 def check_missing_teams(
-    rstate: schema.Rstate, conf, policy_: policy.Policy
+    rstate: schema.Rstate, conf: config.Config, policy_: policy.Policy
 ) -> bool:
     """Check if a team is part of the policy_, but does not exist"""
+    errors = False
     del policy_
     for team in config.get_teams(conf):
         name = config.team_name(team)
         if not schema.org_team_by_name(rstate, name):
             print('Error: team "{}" does not exist'.format(name))
+            errors = True
+    return errors
 
 
 def check_repo_branch_protection(
-    rstate: schema.Rstate, conf, policy_: policy.Policy, repo: schema.Repo
+    rstate: schema.Rstate,
+    conf: config.Config,
+    policy_: policy.Policy,
+    repo: schema.Repo,
 ) -> bool:
     del conf
+    errors = False
     name = schema.repo_name(repo)
     patterns = policy.branch_protection_patterns(policy_, name)
     for pattern in patterns:
@@ -301,6 +322,7 @@ def check_repo_branch_protection(
                     pattern, name
                 )
             )
+            errors = True
         else:
             rule = policy.branch_protection_get(policy_, name, pattern)
             result = policy.bprule_cmp(
@@ -312,9 +334,13 @@ def check_repo_branch_protection(
                         name, pattern, result
                     )
                 )
+            errors = True
+    return errors
 
 
-def check_all(conf, usermap, policy_: policy.Policy):
+def check_all(
+    conf: config.Config, usermap: user_map.UserMap, policy_: policy.Policy
+) -> None:
     rstate = cache.load()
     for repo in schema.org_repositories(rstate):
         check_repo_unref(rstate, conf, policy_, repo)

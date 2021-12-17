@@ -1,15 +1,16 @@
 import logging
 import os
+from typing import Literal, Union
 
 from ghaudit.cli import cli
 
 LOGFILE = os.environ.get("LOGFILE")
 LOGLEVEL = os.environ.get("LOGLEVEL", "ERROR")
 LOG_FORMAT = "{asctime} {levelname:8s} ghaudit <{filename}:{lineno} {module}.{funcName}> {message}"  # noqa: E501
-STYLE = "{"
+STYLE = "{"  # type: Union[Literal["%"], Literal["{"], Literal["$"]]
 
 
-def main():
+def main() -> None:
     if LOGFILE:
         handler = logging.FileHandler(LOGFILE)
         formatter = logging.Formatter(LOG_FORMAT, style=STYLE)

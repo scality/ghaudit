@@ -3,6 +3,8 @@ import logging
 import operator
 from collections import namedtuple
 from typing import (
+    Any,
+    Callable,
     Collection,
     Iterable,
     List,
@@ -11,9 +13,13 @@ from typing import (
     MutableMapping,
     NewType,
     Optional,
+    Set,
+    Tuple,
+    TypeVar,
     Union,
-    get_args as typing_get_args,
+    cast,
 )
+from typing import get_args as typing_get_args
 
 from typing_extensions import TypedDict
 
@@ -87,13 +93,43 @@ BPRModel = TypedDict(
 BranchProtectionRule = namedtuple("BranchProtectionRule", ["model", "mode"])
 
 
-def _find_duplicates(sequence, hash_func=None):
+class RawRepoVisibility(TypedDict):
+    repo: str
+    visibility: Visibility
+
+
+class RawBPRule(TypedDict):
+    pattern: str
+    model: str
+    mode: BPRMode
+
+
+RawRule = TypedDict(
+    "RawRule",
+    {
+        "name": str,
+        "repositories": Collection[str],
+        "team access": Mapping[Perm, str],
+        "branch protection rules": Collection[RawBPRule],
+    },
+)
+
+
+T = TypeVar("T")
+
+
+def _find_duplicates(
+    sequence: Iterable[T],
+    hash_func: Optional[Callable[[T], str]] = None,
+) -> Set[str]:
     if hash_func:
-        sequence = map(hash_func, sequence)
-    first_seen = set()
+        hsequence = cast(Iterable[str], map(hash_func, sequence))
+    else:
+        hsequence = cast(Iterable[str], sequence)
+    first_seen = set()  # type: Set[str]
     first_seen_add = first_seen.add
     duplicates = set(
-        i for i in sequence if i in first_seen or first_seen_add(i)
+        i for i in hsequence if i in first_seen or first_seen_add(i)
     )
     return duplicates
 
@@ -123,7 +159,7 @@ class Policy:
     def user_access_key(login: str, repo: str) -> UserAccessKey:
         return UserAccessKey("{},{}".format(login, repo))
 
-    def add_merge_rule(self, rule) -> None:
+    def add_merge_rule(self, rule: RawRule) -> None:
         logging.debug("loading rule %s", rule["name"])
 
         if "team access" not in rule or "branch protection rules" not in rule:
@@ -186,7 +222,7 @@ class Policy:
         logging.info("will ignore repository: %s", repo)
         self._repos_blacklist.append(repo)
 
-    def add_repository(self, repo_data: Mapping) -> None:
+    def add_repository(self, repo_data: RawRepoVisibility) -> None:
         name = repo_data["repo"]
         visibility = repo_data["visibility"]
         if visibility not in list(typing_get_args(Visibility)):
@@ -242,7 +278,8 @@ class Policy:
             repos_config = data["repositories"]
 
             duplicates = _find_duplicates(
-                repos_config["visibility"], lambda x: x["repo"]
+                repos_config["visibility"],
+                cast(Callable[[Mapping[str, str]], str], lambda x: x["repo"]),
             )
             if duplicates:
                 msg = 'Error: defining more than once the visibility of the following repositories: "{}"'  # noqa: E501
@@ -389,8 +426,8 @@ def bprule_model_push_allowance_team_name(push_allowance: TeamActor) -> str:
     return push_allowance["name"]
 
 
-def bprule_model_push_allowance_app_name(push_allowance):
-    return push_allowance["name"]
+# def bprule_model_push_allowance_app_name(push_allowance):
+#     return push_allowance["name"]
 
 
 def bprule_model_restrict_deletion(model: BPRModel) -> bool:
@@ -416,7 +453,7 @@ def cmp_actor(
         #     lambda x: ,
         #     lambda x: bprule_model_push_allowance_app_name(x)
         # ),
-    }
+    }  # type: Mapping[str, Tuple[Callable[[schema.Actor], str], Callable[[Any], str]]]
     actor_from_rule = schema.push_allowance_actor(from_rule)
     from_rule_type = schema.actor_type(actor_from_rule)
     from_model_type = bprule_model_push_allowance_type(from_model)
@@ -593,7 +630,7 @@ def perm_highest(
 
 
 def team_repo_explicit_perm(
-    conf, policy: Policy, team_name, repo
+    conf: config.Config, policy: Policy, team_name: str, repo: schema.Repo
 ) -> Optional[Perm]:
     """
     returns the permissions of a team as explicitly defined in the policy,
@@ -604,7 +641,10 @@ def team_repo_explicit_perm(
 
 
 def team_repo_effective_perm(
-    conf, policy: Policy, conf_team, repo
+    conf: config.Config,
+    policy: Policy,
+    conf_team: config.Team,
+    repo: schema.Repo,
 ) -> Optional[Perm]:
     """
     returns the effective permissions of a team, taking into account
@@ -619,7 +659,7 @@ def team_repo_effective_perm(
 
 
 def team_repo_perm(
-    conf, policy: Policy, team_name: str, repo: schema.Repo
+    conf: config.Config, policy: Policy, team_name: str, repo: schema.Repo
 ) -> Optional[Perm]:
     """
     returns the effective permission of a team if the repo
@@ -633,7 +673,11 @@ def team_repo_perm(
 
 
 def user_perm(
-    conf, policy: Policy, usermap, repo, login: str
+    conf: config.Config,
+    policy: Policy,
+    usermap: user_map.UserMap,
+    repo: schema.Repo,
+    login: str,
 ) -> Optional[Perm]:
     email = user_map.email(usermap, login)
     if email and config.is_owner(conf, email):
@@ -658,7 +702,7 @@ def repo_visibility(policy: Policy, repo_name: str) -> Visibility:
     return policy.repo_visibility(repo_name)
 
 
-def test():
+def test() -> None:
     assert not perm_higher("admin", "admin")
     assert perm_higher("admin", "write")
     assert perm_higher("admin", "read")

@@ -1,4 +1,5 @@
-from typing import Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping, Optional, cast
+from typing import get_args as typing_get_args
 
 import click
 from ruamel.yaml import YAML
@@ -18,7 +19,7 @@ from ghaudit import (
 def load_organisation_conf(filename: str) -> user_map.RawData:
     with open(filename, encoding="UTF-8") as conf_file:
         conf = YAML(typ="safe").load(conf_file)
-    return conf
+    return cast(user_map.RawData, conf)
 
 
 def load_user_map_conf(filename: str) -> Mapping:
@@ -52,7 +53,12 @@ def load_policy_conf(filename: str) -> policy.Policy:
     "--policy", "policy_filename", default=config.default_dir() / "policy.yml"
 )
 @click.pass_context
-def cli(ctx, config_filename, usermap_filename, policy_filename):
+def cli(
+    ctx: click.Context,
+    config_filename: str,
+    usermap_filename: str,
+    policy_filename: str,
+) -> None:
     ctx.ensure_object(dict)
     ctx.obj["config"] = lambda: load_organisation_conf(config_filename)
     ctx.obj["usermap"] = lambda: load_user_map_conf(usermap_filename)
@@ -60,32 +66,32 @@ def cli(ctx, config_filename, usermap_filename, policy_filename):
 
 
 @cli.group("compliance")
-def compliance_group():
+def compliance_group() -> None:
     pass
 
 
 @compliance_group.command("check-all")
 @click.pass_context
-def compliance_check_all(ctx):
+def compliance_check_all(ctx: click.Context) -> None:
     compliance.check_all(
         ctx.obj["config"](), ctx.obj["usermap"](), ctx.obj["policy"]()
     )
 
 
 @cli.group("cache")
-def cache_group():
+def cache_group() -> None:
     pass
 
 
 @cache_group.command("path")
-def cache_path():
+def cache_path() -> None:
     print(cache.file_path())
 
 
 @cache_group.command("refresh")
 @click.option("--token-pass-name", default="ghaudit/github-token")
 @click.pass_context
-def cache_refresh(ctx, token_pass_name):
+def cache_refresh(ctx: click.Context, token_pass_name: str) -> None:
     auth_driver = auth.github_auth_token_passpy(token_pass_name)
     cache.refresh(ctx.obj["config"](), auth_driver)
 
@@ -107,7 +113,7 @@ def team_short_str(team: schema.Team) -> str:
 
 
 @cli.command()
-def stats():
+def stats() -> None:
     rstate = cache.load()
     teams = len(schema.org_teams(rstate))
     repositories = len(schema.org_repositories(rstate))
@@ -131,7 +137,12 @@ def stats():
     )
 
 
-def _common_list(list_func, mode, fmt, rstate=None):
+def _common_list(
+    list_func: Callable[[schema.Rstate], Iterable[Any]],
+    mode: ui.DisplayMode,
+    fmt: ui.Formatter,
+    rstate: Optional[schema.Rstate] = None,
+) -> None:
     if not rstate:
         rstate = cache.load()
     _list = list_func(rstate)
@@ -139,12 +150,12 @@ def _common_list(list_func, mode, fmt, rstate=None):
 
 
 @cli.group("org")
-def org_group():
+def org_group() -> None:
     pass
 
 
 @org_group.group("repositories")
-def org_repositories_group():
+def org_repositories_group() -> None:
     pass
 
 
@@ -152,10 +163,10 @@ def org_repositories_group():
 @click.option(
     "--format",
     "mode",
-    type=click.Choice(["basic", "json", "table"]),
+    type=click.Choice(typing_get_args(ui.DisplayMode)),
     default="basic",
 )
-def org_repositories_list(mode):
+def org_repositories_list(mode: ui.DisplayMode) -> None:
     _common_list(
         schema.org_repositories,
         mode,
@@ -163,8 +174,8 @@ def org_repositories_list(mode):
             (("name", 40), ("archived", 8), ("fork", 5)),
             lambda x: (
                 (schema.repo_name(x), 40),
-                (schema.repo_archived(x), 8),
-                (schema.repo_forked(x), 5),
+                (str(schema.repo_archived(x)), 8),
+                (str(schema.repo_forked(x)), 5),
             ),
             repo_short_str,
         ),
@@ -172,7 +183,7 @@ def org_repositories_list(mode):
 
 
 @org_repositories_group.command("count")
-def org_repositories_count():
+def org_repositories_count() -> None:
     rstate = cache.load()
     repos = schema.org_repositories(rstate)
     print(len(repos))
@@ -182,12 +193,14 @@ def org_repositories_count():
 @click.option(
     "--format",
     "mode",
-    type=click.Choice(["basic", "json", "table"]),
+    type=click.Choice(typing_get_args(ui.DisplayMode)),
     default="basic",
 )
 @click.argument("name")
 @click.pass_context
-def org_repositories_branch_protection(ctx, name, mode):
+def org_repositories_branch_protection(
+    ctx: click.Context, name: str, mode: ui.DisplayMode
+) -> None:
     rstate = cache.load()
     usermap = ctx.obj["usermap"]()
     repo = schema.org_repo_by_name(rstate, name)
@@ -214,13 +227,13 @@ def org_repositories_branch_protection(ctx, name, mode):
                     ),
                     40,
                 ),
-                (schema.branch_protection_admin_enforced(x), 14),
-                (schema.branch_protection_approvals(x), 9),
-                (schema.branch_protection_owner_approval(x), 14),
-                (schema.branch_protection_commit_signatures(x), 17),
-                (schema.branch_protection_linear_history(x), 14),
-                (schema.branch_protection_restrict_pushes(x), 15),
-                (schema.branch_protection_restrict_deletion(x), 17),
+                (str(schema.branch_protection_admin_enforced(x)), 14),
+                (str(schema.branch_protection_approvals(x)), 9),
+                (str(schema.branch_protection_owner_approval(x)), 14),
+                (str(schema.branch_protection_commit_signatures(x)), 17),
+                (str(schema.branch_protection_linear_history(x)), 14),
+                (str(schema.branch_protection_restrict_pushes(x)), 15),
+                (str(schema.branch_protection_restrict_deletion(x)), 17),
             ),
             schema.branch_protection_pattern,
         ),
@@ -228,7 +241,7 @@ def org_repositories_branch_protection(ctx, name, mode):
 
 
 @org_group.group("members")
-def org_members_group():
+def org_members_group() -> None:
     pass
 
 
@@ -239,7 +252,7 @@ def org_members_group():
     type=click.Choice(["basic", "json", "table"]),
     default="basic",
 )
-def org_members_list(mode):
+def org_members_list(mode: ui.DisplayMode) -> None:
     _common_list(
         schema.org_members,
         mode,
@@ -257,14 +270,14 @@ def org_members_list(mode):
 
 
 @org_members_group.command("count")
-def org_members_count():
+def org_members_count() -> None:
     rstate = cache.load()
     members = schema.org_members(rstate)
     print(len(members))
 
 
 @org_group.group("teams")
-def org_teams_group():
+def org_teams_group() -> None:
     pass
 
 
@@ -275,7 +288,7 @@ def org_teams_group():
     type=click.Choice(["basic", "json", "table"]),
     default="basic",
 )
-def org_teams_list(mode):
+def org_teams_list(mode: ui.DisplayMode) -> None:
     rstate = cache.load()
     _common_list(
         schema.org_teams,
@@ -284,8 +297,8 @@ def org_teams_list(mode):
             (("name", 30), ("repositories", 12), ("members", 7)),
             lambda x: (
                 (schema.team_name(x), 30),
-                (len(schema.team_repos(rstate, x)), 12),
-                (len(schema.team_members(rstate, x)), 7),
+                (str(len(schema.team_repos(rstate, x))), 12),
+                (str(len(schema.team_members(rstate, x))), 7),
             ),
             team_short_str,
         ),
@@ -294,20 +307,20 @@ def org_teams_list(mode):
 
 
 @org_teams_group.command("count")
-def org_teams_count():
+def org_teams_count() -> None:
     rstate = cache.load()
     teams = schema.org_teams(rstate)
     print(len(teams))
 
 
 @org_group.group("repository")
-def org_repository_group():
+def org_repository_group() -> None:
     pass
 
 
 @org_repository_group.command("show")
 @click.argument("name")
-def org_repository_show(name):
+def org_repository_show(name: str) -> None:
     def collaborators(repository: schema.Repo) -> str:
         result = "\n"
         for collaborator in schema.repo_collaborators(rstate, repository):
@@ -339,12 +352,12 @@ def org_repository_show(name):
 
 
 @org_group.group("team")
-def org_team_group():
+def org_team_group() -> None:
     pass
 
 
 @org_team_group.command("tree")
-def org_team_tree():
+def org_team_tree() -> None:
     def print_teams(teams: Iterable[schema.Team], indent: int) -> None:
         for team in teams:
             team_name = schema.team_name(team)
@@ -364,7 +377,7 @@ def org_team_tree():
 
 @org_team_group.command("show")
 @click.argument("name")
-def org_team_show(name):
+def org_team_show(name: str) -> None:
     def members(team: schema.Team) -> str:
         result = "\n"
         for member in schema.team_members(rstate, team):
@@ -414,13 +427,13 @@ def org_team_show(name):
 
 
 @cli.group("user")
-def user_group():
+def user_group() -> None:
     pass
 
 
 @user_group.command("show")
 @click.argument("login")
-def user_show(login):
+def user_show(login: str) -> None:
     def teams() -> str:
         result = "\n"
         for team in schema.org_teams(rstate):
@@ -449,24 +462,24 @@ def user_show(login):
 
 
 @cli.group("usermap")
-def usermap_group():
+def usermap_group() -> None:
     pass
 
 
 @usermap_group.command("get-login")
 @click.argument("email")
 @click.pass_context
-def usermap_get_login(ctx, email):
+def usermap_get_login(ctx: click.Context, email: str) -> None:
     print(user_map.login(ctx.obj["usermap"](), email))
 
 
 @usermap_group.command("get-email")
 @click.argument("login")
 @click.pass_context
-def usermap_get_email(ctx, login):
+def usermap_get_email(ctx: click.Context, login: str) -> None:
     print(user_map.email(ctx.obj["usermap"](), login))
 
 
 @cli.command("test")
-def test():
+def test() -> None:
     policy.test()
