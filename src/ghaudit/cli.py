@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Mapping
 
 import click
 from ruamel.yaml import YAML
@@ -15,20 +15,20 @@ from ghaudit import (
 )
 
 
-def load_organisation_conf(filename):
+def load_organisation_conf(filename: str) -> user_map.RawData:
     with open(filename, encoding="UTF-8") as conf_file:
         conf = YAML(typ="safe").load(conf_file)
     return conf
 
 
-def load_user_map_conf(filename):
+def load_user_map_conf(filename: str) -> Mapping:
     with open(filename, encoding="UTF-8") as usermap_file:
         usermap_data = YAML(typ="safe").load(usermap_file)
         usermap = user_map.load(usermap_data)
     return usermap
 
 
-def load_policy_conf(filename):
+def load_policy_conf(filename: str) -> policy.Policy:
     policy_ = policy.Policy()
     with open(filename, encoding="UTF-8") as policy_file:
         policy_data = YAML(typ="safe").load(policy_file)
