@@ -20,7 +20,7 @@ def check_team_unref(
     policy_: policy.Policy,
     team: schema.Team,
 ) -> bool:
-    """Check if team is referenced in config
+    """Check if team is referenced in configuration
 
     Ignore teams that do not have access to repositories in scope
     """
@@ -32,6 +32,7 @@ def check_team_unref(
     if not config.get_team(conf, name):
         repos = [x for x in schema.team_repos(rstate, team) if in_scope(x)]
         if repos:
+            # pylint: disable=line-too-long
             error(
                 'unknown team "{}" has access to the following repositories: {}'.format(  # noqa: E501
                     name, [schema.repo_name(x) for x in repos]
@@ -100,6 +101,7 @@ def _check_team_repo_permissions(
     )
     perm = policy.perm_translate(repo["permission"])
     if not policy_perm:
+        # pylint: disable=line-too-long
         error(
             'team "{}" should not have access to "{}". current permission level for the team is {}'.format(  # noqa: E501
                 name, repo_name, perm
@@ -107,6 +109,7 @@ def _check_team_repo_permissions(
         )
         return False
     if policy.perm_higher(perm, policy_perm):
+        # pylint: disable=line-too-long
         error(
             'team "{}" has permission level too high to repository "{}" ({} instead of {}).'.format(  # noqa: E501
                 name, repo_name, perm, policy_perm
@@ -114,6 +117,7 @@ def _check_team_repo_permissions(
         )
         return False
     if perm != policy_perm:
+        # pylint: disable=line-too-long
         error(
             'team "{}" has permission level too low to repository "{}" ({} instead of {}).'.format(  # noqa: E501
                 name, repo_name, perm, policy_perm
@@ -204,6 +208,7 @@ def check_repo_collaborators(
             conf, policy_, usermap, repo, login
         )
         if not policy_user_perm:
+            # pylint: disable=line-too-long
             error(
                 '{}, should not have access to "{}". current permission level for "{}" is {}'.format(  # noqa: E501
                     user_str(login, username, email), name, login, perm
@@ -211,6 +216,7 @@ def check_repo_collaborators(
             )
             success = False
         elif policy.perm_higher(perm, policy_user_perm):
+            # pylint: disable=line-too-long
             error(
                 '{}, has permission level too high to repo "{}". ({} instead of {})'.format(  # noqa: E501
                     user_str(login, username, email),
@@ -221,6 +227,7 @@ def check_repo_collaborators(
             )
             success = False
         elif perm != policy_user_perm:
+            # pylint: disable=line-too-long
             error(
                 '{}, has permission level too low to repo "{}". ({} instead of {})'.format(  # noqa: E501
                     user_str(login, username, email),
@@ -317,6 +324,7 @@ def check_repo_branch_protection(
     for pattern in patterns:
         rstate_value = schema.repo_branch_protection_rule(repo, pattern)
         if not rstate_value:
+            # pylint: disable=line-too-long
             error(
                 'missing branch protection rule with pattern "{}" for repository "{}"'.format(  # noqa: E501
                     pattern, name
@@ -329,6 +337,7 @@ def check_repo_branch_protection(
                 rstate, policy_, rstate_value, rule.model, rule.mode
             )
             if result:
+                # pylint: disable=line-too-long
                 error(
                     'mismatched branch protection rule in repository "{}" with pattern "{}". differences: {}'.format(  # noqa: E501
                         name, pattern, result

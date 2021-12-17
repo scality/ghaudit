@@ -115,6 +115,7 @@ RawRule = TypedDict(
 )
 
 
+# pylint: disable=invalid-name
 T = TypeVar("T")
 
 
@@ -169,6 +170,7 @@ class Policy:
 
         duplicates = _find_duplicates(repos)
         if duplicates:
+            # pylint: disable=line-too-long
             msg = 'Error: duplicate definition of the repository "{}" in rule "{}"'  # noqa: E501
             msg = msg.format(duplicates, rule["name"])
             self._load_errors.append(msg)
@@ -183,6 +185,7 @@ class Policy:
                     len(repos),
                 )
                 if level not in list(typing_get_args(Perm)):
+                    # pylint: disable=line-too-long
                     msg = 'Error: Invalid access level "{}" in rule "{}". Accepted values are "{}"'  # noqa: E501
                     msg = msg.format(
                         level, rule["name"], list(typing_get_args(Perm))
@@ -210,6 +213,7 @@ class Policy:
                     pattern = bprule["pattern"]
                     if repo in self._branch_protection:
                         if pattern in self._branch_protection[repo]:
+                            # pylint: disable=line-too-long
                             msg = 'Error: duplicated branch protection rule for repository "{}" and pattern "{}"'  # noqa: E501
                             msg = msg.format(repo, pattern)
                             self._load_errors.append(msg)
@@ -226,6 +230,7 @@ class Policy:
         name = repo_data["repo"]
         visibility = repo_data["visibility"]
         if visibility not in list(typing_get_args(Visibility)):
+            # pylint: disable=line-too-long
             msg = 'Error: invalid value for repository visibility "{}". Repository: "{}". Accepted values are "{}"'  # noqa: E501
             msg = msg.format(
                 visibility, name, list(typing_get_args(Visibility))
@@ -234,6 +239,7 @@ class Policy:
 
         if name in self._repos:
             if self._repos[name] or self._repos[name] != visibility:
+                # pylint: disable=line-too-long
                 msg = 'Error: defining repository visibility more than once for repository "{}"'
                 msg = msg.format(name)
                 self._load_errors.append(msg)
@@ -242,6 +248,7 @@ class Policy:
 
     def set_default_visibility(self, visibility: Visibility) -> None:
         if self._default_visibility and self._default_visibility != visibility:
+            # pylint: disable=line-too-long
             msg = "Error: redefining default repository visibility to a different value ({}, already set to {})."  # noqa: E501
             msg = msg.format(visibility, self._default_visibility)
             self._load_errors.append(msg)
@@ -269,6 +276,7 @@ class Policy:
         )  # type: List[BranchProtectionRule]
         for bprule in allbprules:
             if bprule.model not in self._branch_protection_model:
+                # pylint: disable=line-too-long
                 msg = 'Error: referencing branch protection that is not defined "{}"'  # noqa: E501
                 msg = msg.format(bprule.model)
                 self._load_errors.append(msg)
@@ -282,6 +290,7 @@ class Policy:
                 cast(Callable[[Mapping[str, str]], str], lambda x: x["repo"]),
             )
             if duplicates:
+                # pylint: disable=line-too-long
                 msg = 'Error: defining more than once the visibility of the following repositories: "{}"'  # noqa: E501
                 msg = msg.format(duplicates)
                 self._load_errors.append(msg)
@@ -295,6 +304,7 @@ class Policy:
             if "exceptions" in repos_config and repos_config["exceptions"]:
                 duplicates = _find_duplicates(repos_config["exceptions"])
                 if duplicates:
+                    # pylint: disable=line-too-long
                     msg = 'Error: trying to ignore the following repositories more than once: "{}"'  # noqa: E501
                     msg = msg.format(duplicates)
                     self._load_errors.append(msg)
@@ -331,6 +341,7 @@ class Policy:
         for repo_data in repos_config["visibility"]:
             name = repo_data["repo"]
             if name in self._repos_blacklist:
+                # pylint: disable=line-too-long
                 msg = 'Error: trying to ignore and specify the visibility of repositories at the same time: "{}".'
                 msg = msg.format(name)
                 self._load_errors.append(msg)
@@ -600,7 +611,7 @@ def perm_translate(perm: str) -> Perm:
     return perm_map[perm]
 
 
-# chek if perm1 is higher than perm2
+# check if perm1 is higher than perm2
 def perm_higher(perm1: Perm, perm2: Perm) -> bool:
     assert perm1 in list(typing_get_args(Perm))
     if perm1 == "read":
@@ -662,7 +673,7 @@ def team_repo_perm(
     conf: config.Config, policy: Policy, team_name: str, repo: schema.Repo
 ) -> Optional[Perm]:
     """
-    returns the effective permission of a team if the repo
+    returns the effective permission of a team if the repository
     is part of the policy.
     """
     conf_team = config.get_team(conf, team_name)

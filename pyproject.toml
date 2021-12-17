@@ -10,7 +10,10 @@ line-length = 79
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = [
-        "consider-using-f-string"
+        "consider-using-f-string",
+        "missing-module-docstring",
+        "missing-class-docstring",
+        "missing-function-docstring",
 ]
 
 [tool.isort]
