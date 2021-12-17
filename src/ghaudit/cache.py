@@ -34,7 +34,7 @@ def graphql_query_file_path():
     return Path(__file__).parent / "queries" / "compliance"
 
 
-def load():
+def load() -> schema.Rstate:
     with open(file_path(), encoding="UTF-8") as cache_file:
         return json.load(cache_file)
 

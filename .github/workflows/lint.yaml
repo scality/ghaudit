@@ -48,7 +48,7 @@ jobs:
     - name: Analyse with mypy
       if: always()
       run: |
-        mypy --strict --pretty src/ghaudit
+        mypy --pretty src
     - name: Check with safety
       if: always()
       run: |
