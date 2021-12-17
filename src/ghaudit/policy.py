@@ -12,6 +12,7 @@ from typing import (
     NewType,
     Optional,
     Union,
+    get_args as typing_get_args,
 )
 
 from typing_extensions import TypedDict
@@ -112,7 +113,7 @@ class Policy:
         self._branch_protection_model = (
             {}
         )  # type: MutableMapping[str, BPRModel]
-        self._error_policy = []  # type: List[str]
+        self._load_errors = []  # type: List[str]
 
     @staticmethod
     def team_access_key(team: str, repo: str) -> TeamAccessKey:
@@ -134,7 +135,7 @@ class Policy:
         if duplicates:
             msg = 'Error: duplicate definition of the repository "{}" in rule "{}"'  # noqa: E501
             msg = msg.format(duplicates, rule["name"])
-            self._error_policy.append(msg)
+            self._load_errors.append(msg)
 
         if "team access" in rule:
             for level, teams in rule["team access"].items():
@@ -145,12 +146,12 @@ class Policy:
                     len(teams),
                     len(repos),
                 )
-                if level not in ["read", "write", "admin"]:
+                if level not in list(typing_get_args(Perm)):
                     msg = 'Error: Invalid access level "{}" in rule "{}". Accepted values are "{}"'  # noqa: E501
                     msg = msg.format(
-                        level, rule["name"], ["read", "write", "admin"]
+                        level, rule["name"], list(typing_get_args(Perm))
                     )
-                    self._error_policy.append(msg)
+                    self._load_errors.append(msg)
                     continue
                 for team in teams:
                     for repo in repos:
@@ -175,7 +176,7 @@ class Policy:
                         if pattern in self._branch_protection[repo]:
                             msg = 'Error: duplicated branch protection rule for repository "{}" and pattern "{}"'  # noqa: E501
                             msg = msg.format(repo, pattern)
-                            self._error_policy.append(msg)
+                            self._load_errors.append(msg)
                             continue
                         self._branch_protection[repo][pattern] = value
                     else:
@@ -188,29 +189,31 @@ class Policy:
     def add_repository(self, repo_data: Mapping) -> None:
         name = repo_data["repo"]
         visibility = repo_data["visibility"]
-        if visibility not in ["public", "private"]:
+        if visibility not in list(typing_get_args(Visibility)):
             msg = 'Error: invalid value for repository visibility "{}". Repository: "{}". Accepted values are "{}"'  # noqa: E501
-            msg = msg.format(visibility, name, ["public", "private"])
-            self._error_policy.append(msg)
+            msg = msg.format(
+                visibility, name, list(typing_get_args(Visibility))
+            )
+            self._load_errors.append(msg)
 
         if name in self._repos:
             if self._repos[name] or self._repos[name] != visibility:
-                msg = 'Error: defining repository visibility more than once: "{}"'
+                msg = 'Error: defining repository visibility more than once for repository "{}"'
                 msg = msg.format(name)
-                self._error_policy.append(msg)
+                self._load_errors.append(msg)
 
         self._repos[name] = visibility
 
     def set_default_visibility(self, visibility: Visibility) -> None:
         if self._default_visibility and self._default_visibility != visibility:
-            msg = "Error: redefining default repository visibility to a new value ({}, already set to {})."  # noqa: E501
+            msg = "Error: redefining default repository visibility to a different value ({}, already set to {})."  # noqa: E501
             msg = msg.format(visibility, self._default_visibility)
-            self._error_policy.append(msg)
+            self._load_errors.append(msg)
 
-        if visibility not in ["private", "public"]:
+        if visibility not in list(typing_get_args(Visibility)):
             msg = 'Error: invalid value for repository visibility "{}". Accepted values are "{}".'
-            msg = msg.format(visibility, ["private", "public"])
-            self._error_policy.append(msg)
+            msg = msg.format(visibility, list(typing_get_args(Visibility)))
+            self._load_errors.append(msg)
 
         self._default_visibility = visibility
 
@@ -219,7 +222,7 @@ class Policy:
         if intersection:
             msg = 'Error: trying do use repositories set to be ignored: "{}".'
             msg = msg.format(intersection)
-            self._error_policy.append(msg)
+            self._load_errors.append(msg)
             # return
         # todo assert that either _default_visibility is not none,
         # or that every repository has an explicit visibility
@@ -232,7 +235,7 @@ class Policy:
             if bprule.model not in self._branch_protection_model:
                 msg = 'Error: referencing branch protection that is not defined "{}"'  # noqa: E501
                 msg = msg.format(bprule.model)
-                self._error_policy.append(msg)
+                self._load_errors.append(msg)
 
     def load_config(self, data: Mapping) -> None:
         if "repositories" in data:
@@ -244,7 +247,7 @@ class Policy:
             if duplicates:
                 msg = 'Error: defining more than once the visibility of the following repositories: "{}"'  # noqa: E501
                 msg = msg.format(duplicates)
-                self._error_policy.append(msg)
+                self._load_errors.append(msg)
 
             if "default visibility" in repos_config:
                 value = repos_config["default visibility"]
@@ -257,7 +260,7 @@ class Policy:
                 if duplicates:
                     msg = 'Error: trying to ignore the following repositories more than once: "{}"'  # noqa: E501
                     msg = msg.format(duplicates)
-                    self._error_policy.append(msg)
+                    self._load_errors.append(msg)
 
                 for repo in repos_config["exceptions"]:
                     self.add_repository_blacklist(repo)
@@ -286,21 +289,19 @@ class Policy:
             if repo in self._repos:
                 msg = 'Error: trying to ignore repositories defined elsewhere: "{}".'
                 msg = msg.format(repo)
-                self._error_policy.append(msg)
+                self._load_errors.append(msg)
 
         for repo_data in repos_config["visibility"]:
             name = repo_data["repo"]
             if name in self._repos_blacklist:
                 msg = 'Error: trying to ignore and specify the visibility of repositories at the same time: "{}".'
                 msg = msg.format(name)
-                self._error_policy.append(msg)
+                self._load_errors.append(msg)
 
         self.sanity_check()
-        self.fetch_error_policy()
 
-    def fetch_error_policy(self):
-        if len(self._error_policy) > 0:
-            err = list(set(self._error_policy))
+        if self._load_errors:
+            err = list(set(self._load_errors))
             err.sort()
             err.insert(0, "Invalid Policy configuration")
             raise RuntimeError(" \n".join(err))
@@ -564,7 +565,7 @@ def perm_translate(perm: str) -> Perm:
 
 # chek if perm1 is higher than perm2
 def perm_higher(perm1: Perm, perm2: Perm) -> bool:
-    assert perm1 in ["read", "write", "admin"]
+    assert perm1 in list(typing_get_args(Perm))
     if perm1 == "read":
         return False
     if perm1 == "write":
@@ -582,8 +583,8 @@ def perm_highest(
         return perm2
     if not perm2:
         return perm1
-    assert perm1 in ["read", "write", "admin"]
-    assert perm2 in ["read", "write", "admin"]
+    assert perm1 in list(typing_get_args(Perm))
+    assert perm2 in list(typing_get_args(Perm))
     if "admin" in [perm1, perm2]:
         return "admin"
     if "write" in [perm1, perm2]:
