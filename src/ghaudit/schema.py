@@ -18,6 +18,7 @@ from typing_extensions import TypedDict
 
 TeamRole = Literal["MEMBER", "MAINTAINER"]
 OrgRole = Literal["MEMBER", "ADMIN"]
+CollaboratorRole = Literal["MEMBER", "ADMIN"]
 
 UserID = Hashable
 TeamID = Hashable
@@ -101,8 +102,7 @@ class UserWithOrgRole(User):
 
 
 class RepoCollaborator(TypedDict):
-    # todo be more specific
-    role: str
+    role: CollaboratorRole
     node: UserNode
 
 
@@ -113,7 +113,7 @@ class RepoCollaboratorNode(TypedDict):
 
 class RepoCollaboratorEdge(TypedDict):
     node: RepoCollaboratorNode
-    permission: str
+    permission: CollaboratorRole
 
 
 class RepoCollaboratorEdges(TypedDict):
@@ -132,6 +132,7 @@ class Actor(TypedDict):
 BranchProtectionRuleID = Hashable
 
 
+# pylint: disable=too-few-public-methods
 class BPRReferenceRepoID:
     id: Hashable
 
