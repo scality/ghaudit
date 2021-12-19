@@ -401,7 +401,7 @@ class Policy:
             if self._repos[repo]
             else self._default_visibility
         )
-        assert visibility
+        assert visibility  # nosec: testing only
         return visibility
 
     def branch_protection_patterns(self, repo_name: str) -> Collection[str]:
@@ -636,7 +636,7 @@ def perm_translate(perm: str) -> Perm:
 
 # check if perm1 is higher than perm2
 def perm_higher(perm1: Perm, perm2: Perm) -> bool:
-    assert perm1 in list(typing_get_args(Perm))
+    assert perm1 in typing_get_args(Perm)  # nosec: testing only
     if perm1 == "read":
         return False
     if perm1 == "write":
@@ -654,8 +654,8 @@ def perm_highest(
         return perm2
     if not perm2:
         return perm1
-    assert perm1 in list(typing_get_args(Perm))
-    assert perm2 in list(typing_get_args(Perm))
+    assert perm1 in typing_get_args(Perm)  # nosec: testing only
+    assert perm2 in typing_get_args(Perm)  # nosec: testing only
     if "admin" in [perm1, perm2]:
         return "admin"
     if "write" in [perm1, perm2]:
