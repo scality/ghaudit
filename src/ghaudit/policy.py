@@ -204,8 +204,7 @@ class Policy:
                     if pattern in self._branch_protection[repo]:
                         # pylint: disable=line-too-long
                         msg = 'Error: duplicated branch protection rule for repository "{}" and pattern "{}"'  # noqa: E501
-                        msg = msg.format(repo, pattern)
-                        self._load_errors.append(msg)
+                        self._load_errors.append(msg.format(repo, pattern))
                         continue
                     self._branch_protection[repo][pattern] = value
                 else:
@@ -223,8 +222,7 @@ class Policy:
         if duplicates:
             # pylint: disable=line-too-long
             msg = 'Error: duplicate definition of the repository "{}" in rule "{}"'  # noqa: E501
-            msg = msg.format(duplicates, rule["name"])
-            self._load_errors.append(msg)
+            self._load_errors.append(msg.format(duplicates, rule["name"]))
 
         if "team access" in rule:
             self._add_merge_rule_team_access(
@@ -252,9 +250,8 @@ class Policy:
         if name in self._repos:
             if self._repos[name] or self._repos[name] != visibility:
                 # pylint: disable=line-too-long
-                msg = 'Error: defining repository visibility more than once for repository "{}"'
-                msg = msg.format(name)
-                self._load_errors.append(msg)
+                msg = 'Error: defining repository visibility more than once for repository "{}"'  # noqa
+                self._load_errors.append(msg.format(name))
 
         self._repos[name] = visibility
 
@@ -262,13 +259,16 @@ class Policy:
         if self._default_visibility and self._default_visibility != visibility:
             # pylint: disable=line-too-long
             msg = "Error: redefining default repository visibility to a different value ({}, already set to {})."  # noqa: E501
-            msg = msg.format(visibility, self._default_visibility)
-            self._load_errors.append(msg)
+            self._load_errors.append(
+                msg.format(visibility, self._default_visibility)
+            )
 
         if visibility not in typing_get_args(Visibility):
-            msg = 'Error: invalid value for repository visibility "{}". Accepted values are "{}".'
-            msg = msg.format(visibility, list(typing_get_args(Visibility)))
-            self._load_errors.append(msg)
+            # pylint: disable=line-too-long
+            msg = 'Error: invalid value for repository visibility "{}". Accepted values are "{}".'  # noqa
+            self._load_errors.append(
+                msg.format(visibility, list(typing_get_args(Visibility)))
+            )
 
         self._default_visibility = visibility
 
@@ -276,8 +276,7 @@ class Policy:
         intersection = [v for v in self._repos if v in self._repos_blacklist]
         if intersection:
             msg = 'Error: trying do use repositories set to be ignored: "{}".'
-            msg = msg.format(intersection)
-            self._load_errors.append(msg)
+            self._load_errors.append(msg.format(intersection))
         if not self._default_visibility:
             not_defined = filter(
                 lambda x: x[1],
@@ -295,8 +294,7 @@ class Policy:
             if bprule.model not in self._branch_protection_model:
                 # pylint: disable=line-too-long
                 msg = 'Error: referencing branch protection that is not defined "{}"'  # noqa: E501
-                msg = msg.format(bprule.model)
-                self._load_errors.append(msg)
+                self._load_errors.append(msg.format(bprule.model))
 
     def _load_config_repositories(self, repos_config: Mapping) -> None:
         duplicates = _find_duplicates(
@@ -306,8 +304,7 @@ class Policy:
         if duplicates:
             # pylint: disable=line-too-long
             msg = 'Error: defining more than once the visibility of the following repositories: "{}"'  # noqa: E501
-            msg = msg.format(duplicates)
-            self._load_errors.append(msg)
+            self._load_errors.append(msg.format(duplicates))
 
         if "default visibility" in repos_config:
             value = repos_config["default visibility"]
@@ -319,9 +316,8 @@ class Policy:
             duplicates = _find_duplicates(repos_config["exceptions"])
             if duplicates:
                 # pylint: disable=line-too-long
-                msg = 'Error: defining more than once the visibility of the following repositories: "{}"'  # noqa: E501
-                msg = msg.format(duplicates)
-                self._load_errors.append(msg)
+                msg = 'Error: trying to ignore the following repositories more than once: "{}"'  # noqa: E501
+                self._load_errors.append(msg.format(duplicates))
 
             for repo in repos_config["exceptions"]:
                 self.add_repository_blacklist(repo)
