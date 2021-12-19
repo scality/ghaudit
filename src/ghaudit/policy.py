@@ -158,6 +158,59 @@ class Policy:
     def user_access_key(login: str, repo: str) -> UserAccessKey:
         return UserAccessKey("{},{}".format(login, repo))
 
+    def _add_merge_rule_team_access(
+        self,
+        name: str,
+        team_access: Mapping[Perm, str],
+        repos: Collection[str],
+    ) -> None:
+        for level, teams in team_access.items():
+            logging.debug(
+                "adding rule part: name=%s level=%s for %s teams to %s repos",
+                name,
+                level,
+                len(teams),
+                len(repos),
+            )
+            if level not in typing_get_args(Perm):
+                # pylint: disable=line-too-long
+                msg = 'Error: Invalid access level "{}" in rule "{}". Accepted values are "{}"'  # noqa: E501
+                self._load_errors.append(
+                    msg.format(level, name, list(typing_get_args(Perm)))
+                )
+                continue
+            for team in teams:
+                for repo in repos:
+                    if repo not in self._repos:
+                        self._repos[repo] = None
+                    key = Policy.team_access_key(team, repo)
+                    if key in self._team_access:
+                        self._team_access[key] = perm_highest(
+                            level, self._team_access[key]
+                        )
+                    else:
+                        self._team_access[key] = level
+
+    def _add_merge_rule_bpr(
+        self,
+        bprules: Collection[RawBPRule],
+        repos: Collection[str],
+    ) -> None:
+        for bprule in bprules:
+            for repo in repos:
+                value = BranchProtectionRule(bprule["model"], bprule["mode"])
+                pattern = bprule["pattern"]
+                if repo in self._branch_protection:
+                    if pattern in self._branch_protection[repo]:
+                        # pylint: disable=line-too-long
+                        msg = 'Error: duplicated branch protection rule for repository "{}" and pattern "{}"'  # noqa: E501
+                        msg = msg.format(repo, pattern)
+                        self._load_errors.append(msg)
+                        continue
+                    self._branch_protection[repo][pattern] = value
+                else:
+                    self._branch_protection[repo] = {pattern: value}
+
     def add_merge_rule(self, rule: RawRule) -> None:
         logging.debug("loading rule %s", rule["name"])
 
@@ -174,51 +227,12 @@ class Policy:
             self._load_errors.append(msg)
 
         if "team access" in rule:
-            for level, teams in rule["team access"].items():
-                logging.debug(
-                    "adding rule part: name=%s level=%s for %s teams to %s repos",
-                    rule["name"],
-                    level,
-                    len(teams),
-                    len(repos),
-                )
-                if level not in typing_get_args(Perm):
-                    # pylint: disable=line-too-long
-                    msg = 'Error: Invalid access level "{}" in rule "{}". Accepted values are "{}"'  # noqa: E501
-                    msg = msg.format(
-                        level, rule["name"], list(typing_get_args(Perm))
-                    )
-                    self._load_errors.append(msg)
-                    continue
-                for team in teams:
-                    for repo in repos:
-                        if repo not in self._repos:
-                            self._repos[repo] = None
-                        key = Policy.team_access_key(team, repo)
-                        if key in self._team_access:
-                            self._team_access[key] = perm_highest(
-                                level, self._team_access[key]
-                            )
-                        else:
-                            self._team_access[key] = level
+            self._add_merge_rule_team_access(
+                rule["name"], rule["team access"], repos
+            )
 
         if "branch protection rules" in rule:
-            for bprule in rule["branch protection rules"]:
-                for repo in repos:
-                    value = BranchProtectionRule(
-                        bprule["model"], bprule["mode"]
-                    )
-                    pattern = bprule["pattern"]
-                    if repo in self._branch_protection:
-                        if pattern in self._branch_protection[repo]:
-                            # pylint: disable=line-too-long
-                            msg = 'Error: duplicated branch protection rule for repository "{}" and pattern "{}"'  # noqa: E501
-                            msg = msg.format(repo, pattern)
-                            self._load_errors.append(msg)
-                            continue
-                        self._branch_protection[repo][pattern] = value
-                    else:
-                        self._branch_protection[repo] = {pattern: value}
+            self._add_merge_rule_bpr(rule["branch protection rules"], repos)
 
     def add_repository_blacklist(self, repo: str) -> None:
         logging.info("will ignore repository: %s", repo)
