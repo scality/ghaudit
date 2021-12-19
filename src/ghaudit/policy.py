@@ -41,8 +41,6 @@ BPRModel_Requirements = TypedDict(
         "up to date": bool,
     },
 )
-# TODO import this from schema
-ActorType = Literal["User", "Team"]
 
 
 class UserActor(TypedDict):
@@ -425,7 +423,7 @@ def bprule_model_push_allowances(model: BPRModel) -> List[BPRPushAllowance]:
 
 def bprule_model_push_allowance_type(
     push_allowance: BPRPushAllowance,
-) -> ActorType:
+) -> schema.ActorType:
     return push_allowance["type"]
 
 
