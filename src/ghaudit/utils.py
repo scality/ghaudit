@@ -27,18 +27,26 @@ def github_graphql_call(
         'Github GraphQL query: "%s"',
         LazyJsonFmt({"query": call_str, "variables": json.dumps(variables)}),
     )
-    result = session.post(
+    result_raw = session.post(
         endpoint,
         json={"query": call_str, "variables": json.dumps(variables)},
         headers=auth_driver(),
     )
-    if result.status_code != 200:
+    if result_raw.status_code != 200:
         error_fmt = (
             "Call failed to run by returning code of {}."
             "Error message: {}."
             "Query: {}"
         )
         raise Exception(
-            error_fmt.format(result.status_code, result.text, call_str[:200])
+            error_fmt.format(
+                result_raw.status_code, result_raw.text, call_str[:200]
+            )
         )
-    return result.json()
+
+    result = result_raw.json()
+    if "errors" in result:
+        raise RuntimeError(
+            "github returned an error: {}".format(result["error"])
+        )
+    return result
