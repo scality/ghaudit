@@ -1,34 +1,10 @@
 import functools
-import json
 
 import jinja2
 import requests
 
+from ghaudit import utils
 from ghaudit.query.utils import page_info_continue
-
-GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql"
-
-
-# TODO move this somewhere else
-def github_graphql_call(
-    call_str, auth_driver, variables, session=requests.session()
-):
-    # print({'query': call_str, 'variables': json.dumps(variables)})
-    result = session.post(
-        GITHUB_GRAPHQL_ENDPOINT,
-        json={"query": call_str, "variables": json.dumps(variables)},
-        headers=auth_driver(),
-    )
-    if result.status_code != 200:
-        error_fmt = (
-            "Call failed to run by returning code of {}."
-            "Error message: {}."
-            "Query: {}"
-        )
-        raise Exception(
-            error_fmt.format(result.status_code, result.text, call_str[:200])
-        )
-    return result.json()
 
 
 class CompoundQuery:
@@ -102,7 +78,7 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
             args = {**sub_query.params_values(), **args}
         # print(args)
         self._stats["iterations"] += 1
-        result = github_graphql_call(
+        result = utils.github_graphql_call(
             rendered, auth_driver, args, self._session
         )
         # print(result)
