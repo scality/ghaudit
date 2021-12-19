@@ -1,5 +1,4 @@
 from typing import Any, Callable, Iterable, Mapping, Optional, cast
-from typing import get_args as typing_get_args
 
 import click
 from ruamel.yaml import YAML
@@ -14,6 +13,12 @@ from ghaudit import (
     ui,
     user_map,
 )
+
+try:
+    from typing import get_args as typing_get_args
+except ImportError:
+    # python 3.7 support
+    from typing_extensions import get_args as typing_get_args
 
 
 def load_organisation_conf(filename: str) -> user_map.RawData:
