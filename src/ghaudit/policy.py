@@ -264,9 +264,14 @@ class Policy:
             msg = 'Error: trying do use repositories set to be ignored: "{}".'
             msg = msg.format(intersection)
             self._load_errors.append(msg)
-            # return
-        # todo assert that either _default_visibility is not none,
-        # or that every repository has an explicit visibility
+        if not self._default_visibility:
+            not_defined = filter(
+                lambda x: x[1],
+                self._repos.items(),
+            )
+            # pylint: disable=line-too-long
+            msg = 'Error: default visibility is not defined, and no visibility is defined for the following repositories either: "{}"'  # noqa: E501
+            self._load_errors.append(msg.format(list(not_defined)))
         allbprules = functools.reduce(
             lambda a, b: a + list(b.values()),
             self._branch_protection.values(),
