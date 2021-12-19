@@ -1,5 +1,6 @@
 import functools
 import json
+import logging
 
 import jinja2
 import requests
@@ -76,21 +77,20 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         rendered = self.render()
 
         for sub_query in self._sub_queries:
-            # print(repr(sub_query))
             args = {**sub_query.params_values(), **args}
-        # print(args)
         self._stats["iterations"] += 1
         result = utils.github_graphql_call(
             rendered, auth_driver, args, self._session
         )
-        # print(result)
-        # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
 
         to_remove = []
         if "data" not in result:
             raise RuntimeError(
                 'Invalid response from github: "{}"'.format(json.dumps(result))
             )
+
+        logging.debug("response: %s", utils.LazyJsonFmt(result))
+
         for sub_query in self._sub_queries:
             sub_query.update_page_info(result["data"])
             if not page_info_continue(sub_query.get_page_info()):
