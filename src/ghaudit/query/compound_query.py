@@ -45,6 +45,29 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         else:
             self._sub_queries.append(sub_query)
 
+    def _verify_params(self, args):
+        declared = set()
+        assigned = set(args.keys())
+        for sub_query in self._sub_queries:
+            sub_query_params = frozenset(sub_query.params().keys())
+            sub_query_values = frozenset(sub_query.params_values().keys())
+            declared |= sub_query_params
+            assigned |= sub_query_values
+        unassigned = declared - assigned
+        undeclared = declared - assigned
+        if unassigned:
+            raise RuntimeError(
+                "parameters declared but not assigned: {}".format(
+                    declared - assigned
+                )
+            )
+        if undeclared:
+            raise RuntimeError(
+                "parameters assigned but not declared: {}".format(
+                    assigned - declared
+                )
+            )
+
     def render(self):
         params = functools.reduce(
             lambda x, y: {**x, **y.params()}, self._sub_queries, {}
@@ -71,9 +94,7 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
             raise RuntimeError("Nothing to do")
 
         self._dequeue()
-        # TODO verify all parameters:
-        #  * no unknown param
-        #  * no param with without a value
+        self._verify_params(args)
         rendered = self.render()
 
         for sub_query in self._sub_queries:
