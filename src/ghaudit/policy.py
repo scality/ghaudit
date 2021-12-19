@@ -298,44 +298,41 @@ class Policy:
                 msg = msg.format(bprule.model)
                 self._load_errors.append(msg)
 
-    def load_config(self, data: Mapping) -> None:
-        if "repositories" in data:
-            repos_config = data["repositories"]
+    def _load_config_repositories(self, repos_config: Mapping) -> None:
+        duplicates = _find_duplicates(
+            repos_config["visibility"],
+            cast(Callable[[Mapping[str, str]], str], lambda x: x["repo"]),
+        )
+        if duplicates:
+            # pylint: disable=line-too-long
+            msg = 'Error: defining more than once the visibility of the following repositories: "{}"'  # noqa: E501
+            msg = msg.format(duplicates)
+            self._load_errors.append(msg)
 
-            duplicates = _find_duplicates(
-                repos_config["visibility"],
-                cast(Callable[[Mapping[str, str]], str], lambda x: x["repo"]),
-            )
+        if "default visibility" in repos_config:
+            value = repos_config["default visibility"]
+            self.set_default_visibility(value)
+        for repo_data in repos_config["visibility"]:
+            self.add_repository(repo_data)
+
+        if "exceptions" in repos_config and repos_config["exceptions"]:
+            duplicates = _find_duplicates(repos_config["exceptions"])
             if duplicates:
                 # pylint: disable=line-too-long
                 msg = 'Error: defining more than once the visibility of the following repositories: "{}"'  # noqa: E501
                 msg = msg.format(duplicates)
                 self._load_errors.append(msg)
 
-            if "default visibility" in repos_config:
-                value = repos_config["default visibility"]
-                self.set_default_visibility(value)
-            for repo_data in repos_config["visibility"]:
-                self.add_repository(repo_data)
+            for repo in repos_config["exceptions"]:
+                self.add_repository_blacklist(repo)
 
-            if "exceptions" in repos_config and repos_config["exceptions"]:
-                duplicates = _find_duplicates(repos_config["exceptions"])
-                if duplicates:
-                    # pylint: disable=line-too-long
-                    msg = 'Error: trying to ignore the following repositories more than once: "{}"'  # noqa: E501
-                    msg = msg.format(duplicates)
-                    self._load_errors.append(msg)
+    def _load_config_policy(self, policy_config: Mapping) -> None:
+        if "rules" in policy_config:
+            for rule in policy_config["rules"]:
+                self.add_merge_rule(rule)
 
-                for repo in repos_config["exceptions"]:
-                    self.add_repository_blacklist(repo)
-
-        if "policy" in data:
-            if "rules" in data["policy"]:
-                for rule in data["policy"]["rules"]:
-                    self.add_merge_rule(rule)
-
-            if "exceptions" in data["policy"]:
-                for perm_exception in data["policy"]["exceptions"]:
+            if "exceptions" in policy_config:
+                for perm_exception in policy_config["exceptions"]:
                     repo = perm_exception["repo"]
                     login = perm_exception["user"]
                     perm = perm_exception["permissions"]
@@ -344,24 +341,37 @@ class Policy:
                     if repo not in self._repos:
                         self._repos[repo] = None
 
-        if "branch protection models" in data:
-            for model in data["branch protection models"]:
-                name = model.pop("name")
-                self._branch_protection_model[name] = model
-
-        for repo in repos_config["exceptions"]:
-            if repo in self._repos:
-                msg = 'Error: trying to ignore repositories defined elsewhere: "{}".'
-                msg = msg.format(repo)
-                self._load_errors.append(msg)
+    def _load_config_post_check_repositories(
+        self, repos_config: Mapping
+    ) -> None:
+        if "exceptions" in repos_config:
+            for repo in repos_config["exceptions"]:
+                if repo in self._repos:
+                    # pylint: disable=line-too-long
+                    msg = 'Error: trying to ignore repositories defined elsewhere: "{}".'  # noqa
+                    self._load_errors.append(msg.format(repo))
 
         for repo_data in repos_config["visibility"]:
             name = repo_data["repo"]
             if name in self._repos_blacklist:
                 # pylint: disable=line-too-long
-                msg = 'Error: trying to ignore and specify the visibility of repositories at the same time: "{}".'
-                msg = msg.format(name)
-                self._load_errors.append(msg)
+                msg = 'Error: trying to ignore and specify the visibility of repositories at the same time: "{}".'  # noqa
+                self._load_errors.append(msg.format(name))
+
+    def load_config(self, data: Mapping) -> None:
+        if "repositories" in data:
+            self._load_config_repositories(data["repositories"])
+
+        if "policy" in data:
+            self._load_config_policy(data["policy"])
+
+        if "branch protection models" in data:
+            for model in data["branch protection models"]:
+                name = model.pop("name")
+                self._branch_protection_model[name] = model
+
+        if "repositories" in data:
+            self._load_config_post_check_repositories(data["repositories"])
 
         self.sanity_check()
 
