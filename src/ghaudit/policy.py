@@ -91,6 +91,23 @@ BPRModel = TypedDict(
 BranchProtectionRule = namedtuple("BranchProtectionRule", ["model", "mode"])
 
 
+# mapping between pattern and branch protection rule
+BPRMappingPattern = MutableMapping[str, BranchProtectionRule]
+
+# mapping between repository and BPRMappingPattern
+BPRMapping = MutableMapping[str, BPRMappingPattern]
+
+# mapping between a name and BPRModel
+BPRModelMapping = MutableMapping[str, BPRModel]
+
+TeamAccessMapping = MutableMapping[TeamAccessKey, Optional[Perm]]
+
+# see cmp_actor
+CmpActorDispatch = Mapping[
+    str, Tuple[Callable[[schema.Actor], str], Callable[[Any], str]]
+]
+
+
 class RawRepoVisibility(TypedDict):
     repo: str
     visibility: Visibility
@@ -138,16 +155,10 @@ class Policy:
         self._default_visibility = None  # type: Optional[Visibility]
         self._repos = {}  # type: MutableMapping[str, Optional[Visibility]]
         self._repos_blacklist = []  # type: List[str]
-        self._team_access = (
-            {}
-        )  # type: MutableMapping[TeamAccessKey, Optional[Perm]]
+        self._team_access = {}  # type: TeamAccessMapping
         self._user_access = {}  # type: MutableMapping[UserAccessKey, Perm]
-        self._branch_protection = (
-            {}
-        )  # type: MutableMapping[str, MutableMapping[str, BranchProtectionRule]]
-        self._branch_protection_model = (
-            {}
-        )  # type: MutableMapping[str, BPRModel]
+        self._branch_protection = {}  # type: BPRMapping
+        self._branch_protection_model = {}  # type: BPRModelMapping
         self._load_errors = []  # type: List[str]
 
     @staticmethod
@@ -487,7 +498,7 @@ def cmp_actor(
         #     lambda x: ,
         #     lambda x: bprule_model_push_allowance_app_name(x)
         # ),
-    }  # type: Mapping[str, Tuple[Callable[[schema.Actor], str], Callable[[Any], str]]]
+    }  # type: CmpActorDispatch
     actor_from_rule = schema.push_allowance_actor(from_rule)
     from_rule_type = schema.actor_type(actor_from_rule)
     from_model_type = bprule_model_push_allowance_type(from_model)
