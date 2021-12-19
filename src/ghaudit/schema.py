@@ -255,7 +255,7 @@ def _get_x_by_y(
 
 def _get_unique_x_by_y(rstate: Rstate, seq_get, key: str, value):
     elems = _get_x_by_y(rstate, seq_get, key, value)
-    assert len(elems) <= 1
+    assert len(elems) <= 1  # nosec: testing only
     if elems:
         return elems[0]
     return None
@@ -276,7 +276,8 @@ def _user_by_id_noexcept(
 
 def user_by_id(rstate: Rstate, user_id: UserID) -> UserWithOrgRole:
     user = _user_by_id_noexcept(rstate, user_id)
-    assert user
+    if not user:
+        raise RuntimeError('User not found from ID: "{}"'.format(user_id))
     return user
 
 
@@ -368,7 +369,7 @@ def repo_branch_protection_rule(
 ) -> Optional[BranchProtectionRuleNode]:
     rules = repo_branch_protection_rules(repo)
     elems = [x for x in rules if branch_protection_pattern(x) == pattern]
-    assert len(elems) <= 1
+    assert len(elems) <= 1  # nosec: testing only
     if elems:
         return elems[0]
     return None
@@ -546,11 +547,6 @@ def all_bp_rules(rstate: Rstate) -> Set[BranchProtectionRuleID]:
 
 
 def _user_create(rstate: Rstate, user: Mapping) -> Rstate:
-    assert "node" in user
-    assert "login" in user["node"] and user["node"]["login"]
-    assert "id" in user["node"] and user["node"]["id"]
-    assert "email" in user["node"]
-    assert isinstance(user["node"]["id"], Hashable)
     user_id = user["node"].pop("id")
     rstate["data"]["users"][user_id] = cast(UserWithOrgRole, user)
     return rstate
@@ -650,7 +646,6 @@ def merge_repo(old_value: Repo, new_value: Repo) -> Repo:
 def merge_repo_branch_protection(
     repo: Repo, push_allowance: PushAllowance
 ) -> Repo:
-    assert "branchProtectionRules" in repo["node"]
     bprule_id = push_allowance["branchProtectionRule"]["id"]
     # del push_allowance['branchProtectionRule']
     bprule = [
