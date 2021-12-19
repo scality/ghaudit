@@ -478,8 +478,3 @@ def usermap_get_login(ctx: click.Context, email: str) -> None:
 @click.pass_context
 def usermap_get_email(ctx: click.Context, login: str) -> None:
     print(user_map.email(ctx.obj["usermap"](), login))
-
-
-@cli.command("test")
-def test() -> None:
-    policy.test()
