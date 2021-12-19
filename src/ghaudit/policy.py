@@ -182,7 +182,7 @@ class Policy:
                     len(teams),
                     len(repos),
                 )
-                if level not in list(typing_get_args(Perm)):
+                if level not in typing_get_args(Perm):
                     # pylint: disable=line-too-long
                     msg = 'Error: Invalid access level "{}" in rule "{}". Accepted values are "{}"'  # noqa: E501
                     msg = msg.format(
@@ -227,7 +227,7 @@ class Policy:
     def add_repository(self, repo_data: RawRepoVisibility) -> None:
         name = repo_data["repo"]
         visibility = repo_data["visibility"]
-        if visibility not in list(typing_get_args(Visibility)):
+        if visibility not in typing_get_args(Visibility):
             # pylint: disable=line-too-long
             msg = 'Error: invalid value for repository visibility "{}". Repository: "{}". Accepted values are "{}"'  # noqa: E501
             msg = msg.format(
@@ -251,7 +251,7 @@ class Policy:
             msg = msg.format(visibility, self._default_visibility)
             self._load_errors.append(msg)
 
-        if visibility not in list(typing_get_args(Visibility)):
+        if visibility not in typing_get_args(Visibility):
             msg = 'Error: invalid value for repository visibility "{}". Accepted values are "{}".'
             msg = msg.format(visibility, list(typing_get_args(Visibility)))
             self._load_errors.append(msg)
