@@ -36,7 +36,9 @@ def graphql_query_file_path():
 
 def load() -> schema.Rstate:
     with open(file_path(), encoding="UTF-8") as cache_file:
-        return json.load(cache_file)
+        rstate = json.load(cache_file)
+        schema.validate(rstate)
+        return rstate
 
 
 def store(data):
