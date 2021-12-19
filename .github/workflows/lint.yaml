@@ -41,6 +41,10 @@ jobs:
       if: always()
       run: |
         PYLINTHOME=pylint-home pylint --enable spelling --spelling-dict en_GB src/ghaudit
+    - name: Lint with bandit
+      if: always()
+      run: |
+        bandit -r src/ghaudit
     - name: Lint with isort
       if: always()
       run: |
