@@ -1,4 +1,5 @@
 import functools
+import json
 
 import jinja2
 import requests
@@ -65,7 +66,8 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
             self._append(self._queue.pop())
 
     def run(self, auth_driver, args):
-        assert self._queue or self._sub_queries
+        if not self._queue and not self._sub_queries:
+            raise RuntimeError("Nothing to do")
 
         self._dequeue()
         # TODO verify all parameters:
@@ -84,12 +86,11 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         # print(result)
         # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
 
-        # TODO maybe check for errors here
-
         to_remove = []
         if "data" not in result:
-            print(result)
-            assert False
+            raise RuntimeError(
+                'Invalid response from github: "{}"'.format(json.dumps(result))
+            )
         for sub_query in self._sub_queries:
             sub_query.update_page_info(result["data"])
             if not page_info_continue(sub_query.get_page_info()):
