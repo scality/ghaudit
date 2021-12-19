@@ -5,13 +5,18 @@ from typing import (
     Callable,
     Iterable,
     List,
-    Literal,
     Mapping,
     NamedTuple,
     Optional,
     Sequence,
     Tuple,
 )
+
+try:
+    from typing import Literal
+except ImportError:
+    # python 3.7 support
+    from typing_extensions import Literal
 
 DisplayMode = Literal["basic", "json", "table"]
 

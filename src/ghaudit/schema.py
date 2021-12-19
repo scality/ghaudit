@@ -6,7 +6,6 @@ from typing import (
     Hashable,
     Iterable,
     List,
-    Literal,
     Mapping,
     MutableMapping,
     Optional,
@@ -15,6 +14,12 @@ from typing import (
 )
 
 from typing_extensions import TypedDict
+
+try:
+    from typing import Literal
+except ImportError:
+    # python 3.7 support
+    from typing_extensions import Literal
 
 TeamRole = Literal["MEMBER", "MAINTAINER"]
 OrgRole = Literal["MEMBER", "ADMIN"]

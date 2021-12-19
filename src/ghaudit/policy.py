@@ -8,7 +8,6 @@ from typing import (
     Collection,
     Iterable,
     List,
-    Literal,
     Mapping,
     MutableMapping,
     NewType,
@@ -19,11 +18,19 @@ from typing import (
     Union,
     cast,
 )
-from typing import get_args as typing_get_args
 
 from typing_extensions import TypedDict
 
 from ghaudit import config, schema, user_map
+
+try:
+    from typing import Literal
+    from typing import get_args as typing_get_args
+except ImportError:
+    # python 3.7 support
+    from typing_extensions import Literal
+    from typing_extensions import get_args as typing_get_args
+
 
 Perm = Literal["read", "write", "admin"]
 BPRMode = Literal["baseline", "strict"]
