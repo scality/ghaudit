@@ -36,11 +36,11 @@ jobs:
         python -m pip install --upgrade --upgrade-strategy eager black dlint flake8 isort mypy pylint safety bandit pyenchant types-jinja2 types-requests ruamel.yaml
     - name: Lint with flake8
       run: |
-        flake8 --show-source --statistics src/ghaudit
+        flake8 --show-source --statistics src/ghaudit tests
     - name: Lint with pylint
       if: always()
       run: |
-        PYLINTHOME=pylint-home pylint --enable spelling --spelling-dict en_GB src/ghaudit
+        PYLINTHOME=pylint-home pylint --enable spelling --spelling-dict en_GB src/ghaudit tests
     - name: Lint with bandit
       if: always()
       run: |
@@ -48,7 +48,7 @@ jobs:
     - name: Lint with isort
       if: always()
       run: |
-        isort --profile black --check-only src/ghaudit
+        isort --profile black --check-only src/ghaudit tests
     - name: Install types for mypy
       if: always()
       run: |
@@ -58,7 +58,7 @@ jobs:
       # ignoring missing imports because for some reasons,
       # type detection for ruamel.yaml is flaky
       run: |
-        mypy --pretty --ignore-missing-imports src
+        mypy --pretty --ignore-missing-imports src tests
     - name: Check with safety
       if: always()
       run: |
@@ -66,4 +66,4 @@ jobs:
     - name: check coding style
       if: always()
       run: |
-        black --diff --check src/ghaudit
+        black --diff --check src/ghaudit tests
