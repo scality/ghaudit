@@ -50,7 +50,7 @@ fragment branchProtection{{ num }} on Query {
         SubQueryCommon.__init__(
             self,
             [
-                BranchProtectionPushAllowances.FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES,
+                BranchProtectionPushAllowances.FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES,  # noqa: E501
             ],
             "branchProtection{}".format(num),
             {"pushAllowancesMax": "Int!"},

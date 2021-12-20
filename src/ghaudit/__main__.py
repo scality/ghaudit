@@ -6,6 +6,7 @@ from ghaudit.cli import cli
 
 LOGFILE = os.environ.get("LOGFILE")
 LOGLEVEL = os.environ.get("LOGLEVEL", "ERROR")
+# pylint: disable=line-too-long
 LOG_FORMAT = "{asctime} {levelname:8s} ghaudit <{filename}:{lineno} {module}.{funcName}> {message}"  # noqa: E501
 STYLE = "{"  # type: Union[Literal["%"], Literal["{"], Literal["$"]]
 
