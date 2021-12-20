@@ -1,4 +1,4 @@
-from ghaudit.policy import perm_highest, perm_higher
+from ghaudit.policy import perm_higher, perm_highest
 
 # from hypothesis import given, strategies as st
 
