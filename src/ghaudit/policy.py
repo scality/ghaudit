@@ -261,7 +261,7 @@ class Policy:
         if name in self._repos:
             if self._repos[name] or self._repos[name] != visibility:
                 # pylint: disable=line-too-long
-                msg = 'Error: defining repository visibility more than once for repository "{}"'  # noqa
+                msg = 'Error: defining repository visibility more than once for repository "{}"'  # noqa: E501
                 self._load_errors.append(msg.format(name))
 
         self._repos[name] = visibility
@@ -276,7 +276,7 @@ class Policy:
 
         if visibility not in typing_get_args(Visibility):
             # pylint: disable=line-too-long
-            msg = 'Error: invalid value for repository visibility "{}". Accepted values are "{}".'  # noqa
+            msg = 'Error: invalid value for repository visibility "{}". Accepted values are "{}".'  # noqa: E501
             self._load_errors.append(
                 msg.format(visibility, list(typing_get_args(Visibility)))
             )
@@ -355,14 +355,14 @@ class Policy:
             for repo in repos_config["exceptions"]:
                 if repo in self._repos:
                     # pylint: disable=line-too-long
-                    msg = 'Error: trying to ignore repositories defined elsewhere: "{}".'  # noqa
+                    msg = 'Error: trying to ignore repositories defined elsewhere: "{}".'  # noqa: E501
                     self._load_errors.append(msg.format(repo))
 
         for repo_data in repos_config["visibility"]:
             name = repo_data["repo"]
             if name in self._repos_blacklist:
                 # pylint: disable=line-too-long
-                msg = 'Error: trying to ignore and specify the visibility of repositories at the same time: "{}".'  # noqa
+                msg = 'Error: trying to ignore and specify the visibility of repositories at the same time: "{}".'  # noqa: E501
                 self._load_errors.append(msg.format(name))
 
     def load_config(self, data: Mapping) -> None:
