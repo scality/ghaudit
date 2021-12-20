@@ -1,4 +1,8 @@
+from typing import Any, Mapping
+
+from ghaudit.query.sub_query import ValidValueType
 from ghaudit.query.sub_query_common import SubQueryCommon
+from ghaudit.query.utils import PageInfo
 
 
 class RepoBranchProtectionQuery(SubQueryCommon):
@@ -45,7 +49,7 @@ fragment repoBranchProtectionRules{{ num }} on Query {
 }
 """
 
-    def __init__(self, repository, num, max_):
+    def __init__(self, repository: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,
             [
@@ -59,7 +63,7 @@ fragment repoBranchProtectionRules{{ num }} on Query {
         self._num = num
         self._values["branchProtectionMax"] = max_
 
-    def update_page_info(self, response):
+    def update_page_info(self, response: Mapping[str, Any]) -> None:
         root = "repo{}".format(self._num)
         cursor_name = "repo{}BranchprotectionCursor".format(self._num)
         if root in response and "repository" in response[root]:
@@ -68,14 +72,17 @@ fragment repoBranchProtectionRules{{ num }} on Query {
             if response[root]["repository"]["branchProtectionRules"]:
                 page_info = response[root]["repository"][
                     "branchProtectionRules"
-                ]["pageInfo"]
+                ][
+                    "pageInfo"
+                ]  # type: PageInfo
             else:
                 page_info = {"hasNextPage": False, "endCursor": None}
             self._page_info = page_info
             self._values[cursor_name] = self._page_info["endCursor"]
             self._count += 1
 
-    def render(self, args):
-        args["num"] = self._num
-        args["repository"] = self._repository
-        return SubQueryCommon.render(self, args)
+    def render(self, args: Mapping[str, ValidValueType]) -> str:
+        return SubQueryCommon.render(
+            self,
+            {**args, **{"num": self._num, "repository": self._repository}},
+        )

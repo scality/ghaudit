@@ -1,4 +1,7 @@
+from typing import Any, Mapping
+
 from ghaudit.query.sub_query_common import SubQueryCommon
+from ghaudit.query.utils import PageInfo
 
 
 class OrgTeamsQuery(SubQueryCommon):
@@ -32,7 +35,7 @@ fragment teams on Query {
 }
 """
 
-    def __init__(self):
+    def __init__(self) -> None:
         SubQueryCommon.__init__(
             self,
             [OrgTeamsQuery.FRAG_ORG_TEAM_FIELDS, OrgTeamsQuery.FRAG_ORG_TEAM],
@@ -40,7 +43,7 @@ fragment teams on Query {
             {"organisation": "String!", "teamsMax": "Int!"},
         )
 
-    def update_page_info(self, response):
+    def update_page_info(self, response: Mapping[str, Any]) -> None:
         if (
             "root" in response
             and response["root"]
@@ -48,6 +51,8 @@ fragment teams on Query {
         ):
             if not self._page_info:
                 self._params["teamsCursor"] = "String!"
-            self._page_info = response["root"]["teams"]["pageInfo"]
+            self._page_info = response["root"]["teams"][
+                "pageInfo"
+            ]  # type: PageInfo
             self._values["teamsCursor"] = self._page_info["endCursor"]
             self._count += 1
