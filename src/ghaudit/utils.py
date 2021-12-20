@@ -1,28 +1,30 @@
 import json
 import logging
-from typing import Callable, Iterable
+from typing import Any, Iterable, Mapping
 
 import requests
+
+from ghaudit.auth import AuthDriver
 
 GITHUB_GRAPHQL_DEFAULT_ENDPOINT = "https://api.github.com/graphql"
 
 
 # pylint: disable=too-few-public-methods
 class LazyJsonFmt:
-    def __init__(self, argument):
+    def __init__(self, argument: Any) -> None:
         self._argument = argument
 
-    def __str__(self):
+    def __str__(self) -> str:
         return json.dumps(self._argument)
 
 
 def github_graphql_call(
     call_str: str,
-    auth_driver: Callable[[], str],
+    auth_driver: AuthDriver,
     variables: Iterable[str],
     session: requests.Session = requests.session(),
-    endpoint=GITHUB_GRAPHQL_DEFAULT_ENDPOINT,
-) -> str:
+    endpoint: str = GITHUB_GRAPHQL_DEFAULT_ENDPOINT,
+) -> Mapping[str, Any]:
     logging.debug(
         'Github GraphQL query: "%s"',
         LazyJsonFmt({"query": call_str, "variables": json.dumps(variables)}),

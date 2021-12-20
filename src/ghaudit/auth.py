@@ -2,8 +2,10 @@ from typing import Callable, Mapping
 
 import passpy.store
 
+AuthDriver = Callable[[], Mapping[str, str]]
 
-def github_auth_token_passpy(path) -> Callable[[], Mapping[str, str]]:
+
+def github_auth_token_passpy(path: str) -> AuthDriver:
     def get_token(path: str) -> str:
         return passpy.store.Store().get_key(path).strip()
 
