@@ -7,44 +7,7 @@ from ghaudit.query.utils import PageInfo
 
 class BranchProtectionPushAllowances(SubQueryCommon):
 
-    FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES = """
-fragment branchProtection{{ num }} on Query {
-  branch_protection{{ num }}: node(id: "{{ bp_id }}") {
-
-    ... on BranchProtectionRule {
-      pushAllowances(first: $pushAllowancesMax{% if page_infos %}, after: $bp{{num}}pushAllowanceCursor{% endif %}) {
-        pageInfo {
-          ...pageInfoFields
-        }
-        nodes {
-          branchProtectionRule {
-            id
-            repository {
-              id
-            }
-          }
-          actor {
-            ... on User {
-              id
-              __typename
-            }
-            ... on App {
-              id
-              __typename
-              name
-            }
-            ... on Team {
-              id
-              __typename
-              name
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
+    FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES = "frag_branch_protection_push_allowances.j2"
 
     def __init__(self, bp_id: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

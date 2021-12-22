@@ -6,48 +6,9 @@ from ghaudit.query.utils import PageInfo
 
 
 class RepoBranchProtectionQuery(SubQueryCommon):
+    FRAG_REPO_BRANCH_PROTECTION_EDGE = "frag_repo_branch_protection_edge.j2"
+    FRAG_REPO_BRANCH_PROTECTION_ENTRY = "frag_repo_branch_protection_entry.j2"
 
-    FRAG_REPO_BRANCH_PROTECTION_EDGE = """
-fragment repo{{ num }}BranchProtectionRulesFields on Repository {
-  id
-  branchProtectionRules(first: $branchProtectionMax{% if page_infos %}, after: $repo{{num}}BranchprotectionCursor{% endif %}) {
-    pageInfo {
-      ...pageInfoFields
-    }
-    nodes {
-      id
-      allowsDeletions
-      allowsForcePushes
-      creator {
-        login
-      }
-      dismissesStaleReviews
-      isAdminEnforced
-      pattern
-      requiredApprovingReviewCount
-      requiredStatusCheckContexts
-      requiresApprovingReviews
-      requiresCodeOwnerReviews
-      requiresCommitSignatures
-      requiresLinearHistory
-      requiresStatusChecks
-      requiresStrictStatusChecks
-      restrictsPushes
-      restrictsReviewDismissals
-    }
-  }
-}
-"""
-
-    FRAG_REPO_BRANCH_PROTECTION_ENTRY = """
-fragment repoBranchProtectionRules{{ num }} on Query {
-  repo{{ num }}: organization(login: $organisation) {
-    repository(name: "{{ repository }}") {
-      ...repo{{ num }}BranchProtectionRulesFields
-    }
-  }
-}
-"""
 
     def __init__(self, repository: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

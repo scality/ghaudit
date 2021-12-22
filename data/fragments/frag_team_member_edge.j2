@@ -1,0 +1,14 @@
+fragment team{{ num }}MemberRole on Team {
+  id
+  members(first: $teamMemberMax{% if page_infos %}, after: $team{{ num }}MemberCursor{% endif %}) {
+    pageInfo {
+      ...pageInfoFields
+    }
+    edges {
+      role
+      node {
+        id
+      }
+    }
+  }
+}

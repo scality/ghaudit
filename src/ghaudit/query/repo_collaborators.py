@@ -6,33 +6,9 @@ from ghaudit.query.utils import PageInfo
 
 
 class RepoCollaboratorQuery(SubQueryCommon):
-    FRAG_REPO_USER_EDGE = """
-fragment repo{{ num }}CollaboratorFields on Repository {
-  id
-  collaborators(first: $repoCollaboratorMax{% if page_infos %}, after: $repo{{ num }}CollaboratorCursor{% endif %}) {
-    pageInfo {
-      ...pageInfoFields
-    }
-    edges {
-      permission
-      node {
-        id
-        login
-      }
-    }
-  }
-}
-"""
+    FRAG_REPO_USER_EDGE = "frag_repo_user_edge.j2"
+    FRAG_REPO_USER_ENTRY = "frag_repo_user_entry.j2"
 
-    FRAG_REPO_USER_ENTRY = """
-fragment repoCollaborator{{ num }} on Query {
-  repo{{ num }} : organization(login: $organisation) {
-    repository(name: "{{ repository }}") {
-      ...repo{{ num }}CollaboratorFields
-    }
-  }
-}
-"""
 
     def __init__(self, repository: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

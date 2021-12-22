@@ -150,12 +150,22 @@ def _sync(config, auth_driver):
 
         for repo in new_repos:
             name = schema.repo_name(repo)
-            query.append(RepoCollaboratorQuery(name, workaround2["repo"], 40))
-            workaround2["repo"] += 1
-            query.append(
-                RepoBranchProtectionQuery(name, workaround2["repo"], 40)
-            )
-            workaround2["repo"] += 1
+            if not schema.repo_forked(repo):
+                query.append(
+                    RepoCollaboratorQuery(name, workaround2["repo"], 40)
+                )
+                workaround2["repo"] += 1
+                query.append(
+                    RepoBranchProtectionQuery(name, workaround2["repo"], 40)
+                )
+                workaround2["repo"] += 1
+            else:
+                repo["branchProtectionRules"] = {"nodes": []}
+                schema.merge(
+                    data,
+                    "",
+                    {"data": {"organization": {"repository": repo["node"]}}},
+                )
             found["repositories"].append(name)
 
         for login in new_collaborators:
