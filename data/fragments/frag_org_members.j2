@@ -1,0 +1,15 @@
+fragment membersWithRole on Query {
+  root: organization(login: $organisation) {
+    membersWithRole(first: $membersWithRoleMax{% if page_infos %}, after: $membersWithRoleCursor{% endif %}) {
+      pageInfo {
+        ...pageInfoFields
+      }
+      edges {
+        role
+        node {
+          ...userFields
+        }
+      }
+    }
+  }
+}

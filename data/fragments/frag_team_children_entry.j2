@@ -1,0 +1,11 @@
+fragment teamChildren{{ num }} on Query {
+  team{{ num }} : organization(login: $organisation) {
+    teams(first: 1, query: "{{ team }}") {
+      edges {
+        node {
+          ...team{{ num }}Children
+        }
+      }
+    }
+  }
+}

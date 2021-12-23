@@ -1,0 +1,14 @@
+fragment team{{ num }}RepoPermissions on Team {
+  id
+  repositories(first: $teamRepoMax{% if page_infos %}, after: $team{{ num }}RepoCursor{% endif %}) {
+    pageInfo {
+      ...pageInfoFields
+    }
+    edges {
+      permission
+      node {
+        id
+      }
+    }
+  }
+}

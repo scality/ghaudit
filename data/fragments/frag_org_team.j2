@@ -1,0 +1,14 @@
+fragment teams on Query {
+  root: organization(login: $organisation) {
+    teams(first: $teamsMax{% if page_infos %}, after: $teamsCursor{% endif %}) {
+      pageInfo {
+        ...pageInfoFields
+      }
+      edges {
+        node {
+          ...teamFields
+        }
+      }
+    }
+  }
+}

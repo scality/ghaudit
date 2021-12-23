@@ -5,33 +5,9 @@ from ghaudit.query.utils import PageInfo
 
 
 class OrgMembersQuery(SubQueryCommon):
-    FRAG_ORG_MEMBERS_FIELDS = """
-fragment userFields on User {
-  id
-  login
-  name
-  email
-  company
-}
-"""
+    FRAG_ORG_MEMBERS_FIELDS = "frag_org_members_fields.j2"
+    FRAG_ORG_MEMBERS = "frag_org_members.j2"
 
-    FRAG_ORG_MEMBERS = """
-fragment membersWithRole on Query {
-  root: organization(login: $organisation) {
-    membersWithRole(first: $membersWithRoleMax{% if page_infos %}, after: $membersWithRoleCursor{% endif %}) {
-      pageInfo {
-        ...pageInfoFields
-      }
-      edges {
-        role
-        node {
-          ...userFields
-        }
-      }
-    }
-  }
-}
-"""
 
     def __init__(self) -> None:
         SubQueryCommon.__init__(

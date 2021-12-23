@@ -1,0 +1,14 @@
+fragment repositories on Query {
+  root: organization(login: $organisation) {
+    repositories(first: $repositoriesMax{% if page_infos %}, after: $repositoriesCursor{% endif %}) {
+      pageInfo {
+        ...pageInfoFields
+      }
+      edges {
+        node {
+          ...repositoryFields
+        }
+      }
+    }
+  }
+}
