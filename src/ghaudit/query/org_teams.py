@@ -6,8 +6,7 @@ from ghaudit.query.utils import PageInfo
 
 class OrgTeamsQuery(SubQueryCommon):
     FRAG_ORG_TEAM_FIELDS = "frag_org_team_fields.j2"
-    FRAG_ORG_TEAM = "frag_org_team.j2" 
-
+    FRAG_ORG_TEAM = "frag_org_team.j2"
 
     def __init__(self) -> None:
         SubQueryCommon.__init__(

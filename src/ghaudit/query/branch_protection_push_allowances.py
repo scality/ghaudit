@@ -7,7 +7,9 @@ from ghaudit.query.utils import PageInfo
 
 class BranchProtectionPushAllowances(SubQueryCommon):
 
-    FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES = "frag_branch_protection_push_allowances.j2"
+    FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES = (
+        "frag_branch_protection_push_allowances.j2"
+    )
 
     def __init__(self, bp_id: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

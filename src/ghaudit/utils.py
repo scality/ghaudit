@@ -48,7 +48,6 @@ def github_graphql_call(
 
     result = result_raw.json()
     if "errors" in result:
-        # print(call_str)
         raise RuntimeError(
             "github returned an error: {}".format(result["errors"])
         )

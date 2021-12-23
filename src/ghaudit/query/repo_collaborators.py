@@ -9,7 +9,6 @@ class RepoCollaboratorQuery(SubQueryCommon):
     FRAG_REPO_USER_EDGE = "frag_repo_user_edge.j2"
     FRAG_REPO_USER_ENTRY = "frag_repo_user_entry.j2"
 
-
     def __init__(self, repository: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,

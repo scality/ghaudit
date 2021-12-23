@@ -7,6 +7,7 @@ from ghaudit.query.sub_query import SubQuery, ValidValueType
 import os
 import sys
 
+
 class SubQueryCommon(SubQuery):
     def __init__(
         self,
@@ -27,20 +28,20 @@ class SubQueryCommon(SubQuery):
         return self._params
 
     def render(self, args: Mapping[str, ValidValueType]) -> str:
-        
-        template_dir = os.path.join(sys.prefix, 'share', 'ghaudit','fragments')
+
+        template_dir = os.path.join(
+            sys.prefix, "share", "ghaudit", "fragments"
+        )
 
         env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(template_dir),
-            undefined=jinja2.StrictUndefined
+            undefined=jinja2.StrictUndefined,
         )
 
         frags = []
-        # print(self._fragments)
         for frag in self._fragments:
             frags.append(env.get_template(frag).render(args))
         return "".join(frags)
-
 
     def update_page_info(self, response: Mapping[str, Any]) -> None:
         raise NotImplementedError("abstract function call")

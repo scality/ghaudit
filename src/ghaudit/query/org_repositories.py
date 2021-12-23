@@ -8,7 +8,6 @@ class OrgRepoQuery(SubQueryCommon):
     FRAG_ORG_REPO_FIELDS = "frag_org_repo_fields.j2"
     FRAG_ORG_REPO = "frag_org_repo.j2"
 
-
     def __init__(self) -> None:
         SubQueryCommon.__init__(
             self,
