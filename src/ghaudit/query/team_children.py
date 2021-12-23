@@ -7,8 +7,7 @@ from ghaudit.query.utils import PageInfo
 
 class TeamChildrenQuery(SubQueryCommon):
     FRAG_TEAM_CHILDREN_EDGE = "frag_team_children_edge.j2"
-    FRAG_TEAM_CHILDREN_ENTRY = "frag_team_children_entry.j2" 
-
+    FRAG_TEAM_CHILDREN_ENTRY = "frag_team_children_entry.j2"
 
     def __init__(self, team: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

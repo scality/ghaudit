@@ -9,7 +9,6 @@ class RepoBranchProtectionQuery(SubQueryCommon):
     FRAG_REPO_BRANCH_PROTECTION_EDGE = "frag_repo_branch_protection_edge.j2"
     FRAG_REPO_BRANCH_PROTECTION_ENTRY = "frag_repo_branch_protection_entry.j2"
 
-
     def __init__(self, repository: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,

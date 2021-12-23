@@ -5,8 +5,7 @@ from ghaudit.query.sub_query_common import SubQueryCommon
 
 
 class UserQuery(SubQueryCommon):
-    FRAG_USER = "frag_user.j2" 
-
+    FRAG_USER = "frag_user.j2"
 
     def __init__(self, login: str, num: int) -> None:
         SubQueryCommon.__init__(
