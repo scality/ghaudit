@@ -1,11 +1,6 @@
-from tempfile import template
 from typing import Any, Iterable, Mapping, MutableMapping
-
-import jinja2
-
+from ghaudit.query.utils import jinja_env
 from ghaudit.query.sub_query import SubQuery, ValidValueType
-import os
-import sys
 
 
 class SubQueryCommon(SubQuery):
@@ -16,10 +11,12 @@ class SubQueryCommon(SubQuery):
         params: MutableMapping[str, str],
     ) -> None:
         SubQuery.__init__(self)
-        self._fragments = fragments
         self._entry = entry
         self._params = params
         self._values = {}  # type: MutableMapping[str, ValidValueType]
+
+        env = jinja_env()
+        self._templates = [env.get_template(frag) for frag in fragments]
 
     def entry(self) -> str:
         return self._entry
@@ -28,19 +25,7 @@ class SubQueryCommon(SubQuery):
         return self._params
 
     def render(self, args: Mapping[str, ValidValueType]) -> str:
-
-        template_dir = os.path.join(
-            sys.prefix, "share", "ghaudit", "fragments"
-        )
-
-        env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(template_dir),
-            undefined=jinja2.StrictUndefined,
-        )
-
-        frags = []
-        for frag in self._fragments:
-            frags.append(env.get_template(frag).render(args))
+        frags = [frag.render(args) for frag in self._templates]
         return "".join(frags)
 
     def update_page_info(self, response: Mapping[str, Any]) -> None:
