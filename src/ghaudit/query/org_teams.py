@@ -5,35 +5,9 @@ from ghaudit.query.utils import PageInfo
 
 
 class OrgTeamsQuery(SubQueryCommon):
-    FRAG_ORG_TEAM_FIELDS = """
-fragment teamFields on Team {
-  id
-  name
-  slug
-  description
-  privacy
-  parentTeam {
-    id
-  }
-}
-"""
+    FRAG_ORG_TEAM_FIELDS = "frag_org_team_fields.j2"
+    FRAG_ORG_TEAM = "frag_org_team.j2" 
 
-    FRAG_ORG_TEAM = """
-fragment teams on Query {
-  root: organization(login: $organisation) {
-    teams(first: $teamsMax{% if page_infos %}, after: $teamsCursor{% endif %}) {
-      pageInfo {
-        ...pageInfoFields
-      }
-      edges {
-        node {
-          ...teamFields
-        }
-      }
-    }
-  }
-}
-"""
 
     def __init__(self) -> None:
         SubQueryCommon.__init__(

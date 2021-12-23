@@ -1,0 +1,9 @@
+fragment user{{ num }} on Query {
+  user{{ num }}: user(login: "{{ login }}") {
+    id
+    login
+    name
+    email
+    company
+  }
+}

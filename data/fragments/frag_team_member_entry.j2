@@ -1,0 +1,7 @@
+fragment teamMember{{ num }} on Query {
+  team{{ num }} : organization(login: $organisation) {
+    team(slug: "{{ team }}") {
+      ...team{{ num }}MemberRole
+    }
+  }
+}

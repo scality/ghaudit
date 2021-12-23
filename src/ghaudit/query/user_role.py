@@ -6,32 +6,9 @@ from ghaudit.query.utils import PageInfo
 
 
 class TeamMemberQuery(SubQueryCommon):
-    FRAG_TEAM_MEMBER_EDGE = """
-fragment team{{ num }}MemberRole on Team {
-  id
-  members(first: $teamMemberMax{% if page_infos %}, after: $team{{ num }}MemberCursor{% endif %}) {
-    pageInfo {
-      ...pageInfoFields
-    }
-    edges {
-      role
-      node {
-        id
-      }
-    }
-  }
-}
-"""
+    FRAG_TEAM_MEMBER_EDGE = "frag_team_member_edge.j2" 
+    FRAG_TEAM_MEMBER_ENTRY = "frag_team_member_entry.j2" 
 
-    FRAG_TEAM_MEMBER_ENTRY = """
-fragment teamMember{{ num }} on Query {
-  team{{ num }} : organization(login: $organisation) {
-    team(slug: "{{ team }}") {
-      ...team{{ num }}MemberRole
-    }
-  }
-}
-"""
 
     def __init__(self, team: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

@@ -1,0 +1,15 @@
+fragment repo{{ num }}CollaboratorFields on Repository {
+  id
+  collaborators(first: $repoCollaboratorMax{% if page_infos %}, after: $repo{{ num }}CollaboratorCursor{% endif %}) {
+    pageInfo {
+      ...pageInfoFields
+    }
+    edges {
+      permission
+      node {
+        id
+        login
+      }
+    }
+  }
+}

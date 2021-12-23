@@ -6,36 +6,9 @@ from ghaudit.query.utils import PageInfo
 
 
 class TeamRepoQuery(SubQueryCommon):
-    FRAG_TEAM_REPO_EDGE = """
-fragment team{{ num }}RepoPermissions on Team {
-  id
-  repositories(first: $teamRepoMax{% if page_infos %}, after: $team{{ num }}RepoCursor{% endif %}) {
-    pageInfo {
-      ...pageInfoFields
-    }
-    edges {
-      permission
-      node {
-        id
-      }
-    }
-  }
-}
-"""
+    FRAG_TEAM_REPO_EDGE = "frag_team_repo_edge.j2"
+    FRAG_TEAM_REPO_ENTRY = "frag_team_repo_entry.j2" 
 
-    FRAG_TEAM_REPO_ENTRY = """
-fragment teamRepo{{ num }} on Query {
-  team{{ num }} : organization(login: $organisation) {
-    teams(first: 1, query: "{{ team }}") {
-      edges {
-        node {
-          ...team{{ num }}RepoPermissions
-        }
-      }
-    }
-  }
-}
-"""
 
     def __init__(self, team: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

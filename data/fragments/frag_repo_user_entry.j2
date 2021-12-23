@@ -1,0 +1,7 @@
+fragment repoCollaborator{{ num }} on Query {
+  repo{{ num }} : organization(login: $organisation) {
+    repository(name: "{{ repository }}") {
+      ...repo{{ num }}CollaboratorFields
+    }
+  }
+}

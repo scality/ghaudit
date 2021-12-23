@@ -1,0 +1,13 @@
+fragment team{{ num }}Children on Team {
+  id
+  childTeams(first: $teamChildrenMax{% if page_infos %}, after: $team{{ num }}ChildrenCursor{% endif %}) {
+    pageInfo {
+      ...pageInfoFields
+    }
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
