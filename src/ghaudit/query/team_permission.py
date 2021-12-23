@@ -7,8 +7,7 @@ from ghaudit.query.utils import PageInfo
 
 class TeamRepoQuery(SubQueryCommon):
     FRAG_TEAM_REPO_EDGE = "frag_team_repo_edge.j2"
-    FRAG_TEAM_REPO_ENTRY = "frag_team_repo_entry.j2" 
-
+    FRAG_TEAM_REPO_ENTRY = "frag_team_repo_entry.j2"
 
     def __init__(self, team: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(

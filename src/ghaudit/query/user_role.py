@@ -6,9 +6,8 @@ from ghaudit.query.utils import PageInfo
 
 
 class TeamMemberQuery(SubQueryCommon):
-    FRAG_TEAM_MEMBER_EDGE = "frag_team_member_edge.j2" 
-    FRAG_TEAM_MEMBER_ENTRY = "frag_team_member_entry.j2" 
-
+    FRAG_TEAM_MEMBER_EDGE = "frag_team_member_edge.j2"
+    FRAG_TEAM_MEMBER_ENTRY = "frag_team_member_entry.j2"
 
     def __init__(self, team: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
