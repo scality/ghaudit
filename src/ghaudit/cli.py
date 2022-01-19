@@ -1,3 +1,5 @@
+"""CLI interface."""
+
 from typing import Any, Callable, Iterable, Mapping, Optional, cast
 
 import click
@@ -21,20 +23,20 @@ except ImportError:
     from typing_extensions import get_args as typing_get_args
 
 
-def load_organisation_conf(filename: str) -> user_map.RawData:
+def _load_organisation_conf(filename: str) -> user_map.RawData:
     with open(filename, encoding="UTF-8") as conf_file:
         conf = YAML(typ="safe").load(conf_file)
     return cast(user_map.RawData, conf)
 
 
-def load_user_map_conf(filename: str) -> Mapping:
+def _load_user_map_conf(filename: str) -> Mapping:
     with open(filename, encoding="UTF-8") as usermap_file:
         usermap_data = YAML(typ="safe").load(usermap_file)
         usermap = user_map.load(usermap_data)
     return usermap
 
 
-def load_policy_conf(filename: str) -> policy.Policy:
+def _load_policy_conf(filename: str) -> policy.Policy:
     policy_ = policy.Policy()
     with open(filename, encoding="UTF-8") as policy_file:
         policy_data = YAML(typ="safe").load(policy_file)
@@ -42,7 +44,7 @@ def load_policy_conf(filename: str) -> policy.Policy:
     return policy_
 
 
-@click.group()
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
     "-c",
     "--config",
@@ -64,20 +66,22 @@ def cli(
     usermap_filename: str,
     policy_filename: str,
 ) -> None:
+    """Github organisation security auditing tool."""
     ctx.ensure_object(dict)
-    ctx.obj["config"] = lambda: load_organisation_conf(config_filename)
-    ctx.obj["usermap"] = lambda: load_user_map_conf(usermap_filename)
-    ctx.obj["policy"] = lambda: load_policy_conf(policy_filename)
+    ctx.obj["config"] = lambda: _load_organisation_conf(config_filename)
+    ctx.obj["usermap"] = lambda: _load_user_map_conf(usermap_filename)
+    ctx.obj["policy"] = lambda: _load_policy_conf(policy_filename)
 
 
 @cli.group("compliance")
 def compliance_group() -> None:
-    pass
+    """Compliance tests against policies and configuration."""
 
 
 @compliance_group.command("check-all")
 @click.pass_context
 def compliance_check_all(ctx: click.Context) -> None:
+    """Run all compliance checks."""
     compliance.check_all(
         ctx.obj["config"](), ctx.obj["usermap"](), ctx.obj["policy"]()
     )
@@ -85,11 +89,12 @@ def compliance_check_all(ctx: click.Context) -> None:
 
 @cli.group("cache")
 def cache_group() -> None:
-    pass
+    """Cache manipulation commands."""
 
 
 @cache_group.command("path")
 def cache_path() -> None:
+    """Show the path where the cache of ghaudit is stored."""
     print(cache.file_path())
 
 
@@ -97,11 +102,16 @@ def cache_path() -> None:
 @click.option("--token-pass-name", default="ghaudit/github-token")
 @click.pass_context
 def cache_refresh(ctx: click.Context, token_pass_name: str) -> None:
+    """Refresh ghaudit cache.
+
+    Request the state of the configured github organisation and store it to a
+    cache file to evaluate later.
+    """
     auth_driver = auth.github_auth_token_passpy(token_pass_name)
     cache.refresh(ctx.obj["config"](), auth_driver)
 
 
-def user_short_str(user: schema.User) -> str:
+def _user_short_str(user: schema.User) -> str:
     if schema.user_name(user):
         return "{} ({})".format(
             schema.user_login(user), schema.user_name(user)
@@ -109,16 +119,17 @@ def user_short_str(user: schema.User) -> str:
     return "{}".format(schema.user_login(user))
 
 
-def repo_short_str(repo: schema.Repo) -> str:
+def _repo_short_str(repo: schema.Repo) -> str:
     return schema.repo_name(repo)
 
 
-def team_short_str(team: schema.Team) -> str:
+def _team_short_str(team: schema.Team) -> str:
     return schema.team_name(team)
 
 
 @cli.command()
 def stats() -> None:
+    """Show some statistics about the cached state."""
     rstate = cache.load()
     teams = len(schema.org_teams(rstate))
     repositories = len(schema.org_repositories(rstate))
@@ -156,12 +167,12 @@ def _common_list(
 
 @cli.group("org")
 def org_group() -> None:
-    pass
+    """Cached state views."""
 
 
 @org_group.group("repositories")
 def org_repositories_group() -> None:
-    pass
+    """Cached state view of repositories."""
 
 
 @org_repositories_group.command("list")
@@ -172,6 +183,7 @@ def org_repositories_group() -> None:
     default="basic",
 )
 def org_repositories_list(mode: ui.DisplayMode) -> None:
+    """List the repositories of the configured organisation."""
     _common_list(
         schema.org_repositories,
         mode,
@@ -182,13 +194,14 @@ def org_repositories_list(mode: ui.DisplayMode) -> None:
                 (str(schema.repo_archived(x)), 8),
                 (str(schema.repo_forked(x)), 5),
             ),
-            repo_short_str,
+            _repo_short_str,
         ),
     )
 
 
 @org_repositories_group.command("count")
 def org_repositories_count() -> None:
+    """Count the number of repositories in the configured organisation."""
     rstate = cache.load()
     repos = schema.org_repositories(rstate)
     print(len(repos))
@@ -206,6 +219,7 @@ def org_repositories_count() -> None:
 def org_repositories_branch_protection(
     ctx: click.Context, name: str, mode: ui.DisplayMode
 ) -> None:
+    """Show branch protection rules of a repository."""
     rstate = cache.load()
     usermap = ctx.obj["usermap"]()
     repo = schema.org_repo_by_name(rstate, name)
@@ -247,7 +261,7 @@ def org_repositories_branch_protection(
 
 @org_group.group("members")
 def org_members_group() -> None:
-    pass
+    """Cached state view of organisation members."""
 
 
 @org_members_group.command("list")
@@ -258,6 +272,7 @@ def org_members_group() -> None:
     default="basic",
 )
 def org_members_list(mode: ui.DisplayMode) -> None:
+    """Show the list of members in the configured organisation."""
     _common_list(
         schema.org_members,
         mode,
@@ -269,13 +284,14 @@ def org_members_list(mode: ui.DisplayMode) -> None:
                 (schema.user_company(x), 30),
                 (schema.user_email(x), 30),
             ),
-            user_short_str,
+            _user_short_str,
         ),
     )
 
 
 @org_members_group.command("count")
 def org_members_count() -> None:
+    """Count the number of members in the configured organisation."""
     rstate = cache.load()
     members = schema.org_members(rstate)
     print(len(members))
@@ -283,7 +299,28 @@ def org_members_count() -> None:
 
 @org_group.group("teams")
 def org_teams_group() -> None:
-    pass
+    """Cached state view of organisation teams."""
+
+
+@org_teams_group.command("tree")
+def org_teams_tree() -> None:
+    """Show the list of teams hierarchically."""
+
+    def print_teams(teams: Iterable[schema.Team], indent: int) -> None:
+        for team in teams:
+            team_name = schema.team_name(team)
+            print("{}* {}".format("".rjust(indent * 2), team_name))
+            children = [
+                x
+                for x in schema.team_children(rstate, team)
+                if schema.team_name(x) != team_name
+            ]
+            print_teams(children, indent + 1)
+
+    rstate = cache.load()
+    teams = schema.org_teams(rstate)
+    roots = [x for x in teams if not schema.team_parent(rstate, x)]
+    print_teams(roots, 1)
 
 
 @org_teams_group.command("list")
@@ -294,6 +331,7 @@ def org_teams_group() -> None:
     default="basic",
 )
 def org_teams_list(mode: ui.DisplayMode) -> None:
+    """Show the list of teams in the configured organisation."""
     rstate = cache.load()
     _common_list(
         schema.org_teams,
@@ -305,7 +343,7 @@ def org_teams_list(mode: ui.DisplayMode) -> None:
                 (str(len(schema.team_repos(rstate, x))), 12),
                 (str(len(schema.team_members(rstate, x))), 7),
             ),
-            team_short_str,
+            _team_short_str,
         ),
         rstate,
     )
@@ -313,6 +351,7 @@ def org_teams_list(mode: ui.DisplayMode) -> None:
 
 @org_teams_group.command("count")
 def org_teams_count() -> None:
+    """Count the number of teams in the configured organisation."""
     rstate = cache.load()
     teams = schema.org_teams(rstate)
     print(len(teams))
@@ -320,12 +359,14 @@ def org_teams_count() -> None:
 
 @org_group.group("repository")
 def org_repository_group() -> None:
-    pass
+    """Cached state view for a given repository."""
 
 
 @org_repository_group.command("show")
 @click.argument("name")
 def org_repository_show(name: str) -> None:
+    """Show detailed attributes of a given repository."""
+
     def collaborators(repository: schema.Repo) -> str:
         result = "\n"
         for collaborator in schema.repo_collaborators(rstate, repository):
@@ -358,31 +399,14 @@ def org_repository_show(name: str) -> None:
 
 @org_group.group("team")
 def org_team_group() -> None:
-    pass
-
-
-@org_team_group.command("tree")
-def org_team_tree() -> None:
-    def print_teams(teams: Iterable[schema.Team], indent: int) -> None:
-        for team in teams:
-            team_name = schema.team_name(team)
-            print("{}* {}".format("".rjust(indent * 2), team_name))
-            children = [
-                x
-                for x in schema.team_children(rstate, team)
-                if schema.team_name(x) != team_name
-            ]
-            print_teams(children, indent + 1)
-
-    rstate = cache.load()
-    teams = schema.org_teams(rstate)
-    roots = [x for x in teams if not schema.team_parent(rstate, x)]
-    print_teams(roots, 1)
+    """Cached state view for a given team."""
 
 
 @org_team_group.command("show")
 @click.argument("name")
 def org_team_show(name: str) -> None:
+    """Show detailed attributes of a given team."""
+
     def members(team: schema.Team) -> str:
         result = "\n"
         for member in schema.team_members(rstate, team):
@@ -433,13 +457,20 @@ def org_team_show(name: str) -> None:
 
 @cli.group("user")
 def user_group() -> None:
-    pass
+    """Cached state view for github users.
+
+    Applies to organisation members and external collaborators."""
 
 
 @user_group.command("show")
 @click.argument("login")
 def user_show(login: str) -> None:
-    def teams() -> str:
+    """Show detailed attributes of a given github user.
+
+    The user does not need to belong to the organisation. ghaudit gathers user
+    information for external collaborators as well."""
+
+    def teams(rstate: schema.Rstate) -> str:
         result = "\n"
         for team in schema.org_teams(rstate):
             for member in schema.team_members(rstate, team):
@@ -449,32 +480,36 @@ def user_show(login: str) -> None:
 
     rstate = cache.load()
     user = schema.user_by_login(rstate, login)
-    print(
-        (
-            " * name: {}\n"
-            + " * login: {}\n"
-            + " * email: {}\n"
-            + " * company: {}\n"
-            + " * teams: {}"
-        ).format(
-            schema.user_name(user),
-            schema.user_login(user),
-            schema.user_email(user),
-            schema.user_company(user),
-            teams(),
+    if user:
+        print(
+            (
+                " * name: {}\n"
+                + " * login: {}\n"
+                + " * email: {}\n"
+                + " * company: {}\n"
+                + " * teams: {}"
+            ).format(
+                schema.user_name(user),
+                schema.user_login(user),
+                schema.user_email(user),
+                schema.user_company(user),
+                teams(rstate),
+            )
         )
-    )
+    else:
+        print("user {} not found".format(login))
 
 
 @cli.group("usermap")
 def usermap_group() -> None:
-    pass
+    """Login to email and email to login."""
 
 
 @usermap_group.command("get-login")
 @click.argument("email")
 @click.pass_context
 def usermap_get_login(ctx: click.Context, email: str) -> None:
+    """Show the login of an organisation member given their email."""
     print(user_map.login(ctx.obj["usermap"](), email))
 
 
@@ -482,4 +517,5 @@ def usermap_get_login(ctx: click.Context, email: str) -> None:
 @click.argument("login")
 @click.pass_context
 def usermap_get_email(ctx: click.Context, login: str) -> None:
+    """Show the email of an organisation member given their login."""
     print(user_map.email(ctx.obj["usermap"](), login))

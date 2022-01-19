@@ -1,0 +1,110 @@
+---
+
+# This is an example policy configuration document for ghaudit.
+
+# The policy describes the desired access rules and security controls over the
+# github resources.
+
+policy:
+  rules:
+    # Repository access policy rules.
+
+    # Each rule can define a list of team access and branch protection rules
+    # associated with a set of repositories. The fields "name" and
+    # "repositories" are mandatory.
+
+    # note: users that have been configured to be owner or the organisation in
+    # organisation.yml will be ignored here, as their access will be
+    # considered admin implicitly.
+    - name: main
+      repositories:
+        - templeOS
+        - secret_stuff
+
+      team access:
+        read:
+          - team1
+        write:
+          - meta
+          - team2
+        admin:
+          - TheCoolTeam
+      branch protection rules:
+        # List of branch protection rules, per branch name pattern. All fields
+        # are mandatory.
+        - pattern: development/*
+          # The name of a branch protection model, which must be defined in the
+          # "branch protection models" section.
+          model: my_model
+          # Can be baseline, or strict. In baseline mode, higher level of
+          # restriction does not generate an error. In strict mode every rule
+          # must match.
+          mode: baseline
+        - pattern: hotfix/*
+          model: my_model
+          mode: strict
+
+    - name: secret_repositories
+      repositories:
+        - olympic_games
+
+      team access:
+        write:
+          - engineering
+
+      # the branch protection rules section is optional
+
+  exceptions:
+    # Exceptions that are applied on top of the rules. This is where external
+    # collaborators access to repositories can be defined. Here the user must be
+    # mentioned using a github login instead of an email.
+    - repo: templeOS
+      user: neighbor
+      permissions: read
+    - repo: something
+      user: Conrad
+      permissions: write
+
+repositories:
+  # List of repositories to be excluded from audits. ghaudit will implicitly
+  # audit all repositories that are not forks or not archived by default.
+  # Repositories out of this list and not referenced in any policy rule will
+  # generate a compliance error.
+  exceptions: []
+
+  # Repositories default visibility to check against. All repositories not
+  # mentioned in the "visibility" section will be checked against this
+  # visibility level.
+  default visibility: public
+  # The explicit visibility for each repository to check against
+  visibility:
+    - { repo: olympic_games, visibility: private }
+
+branch protection models:
+  # This is the list of branch protection models. A model describes a set of
+  # branch protection rules to be verified. Models are identified by name, and
+  # can be reused with multiple branch protection patterns.
+  - name: my_model
+    requirements:
+      approvals: 0
+      owner approval: true
+      commit signatures: true
+      linear history: false
+      status check:
+        values: [] # not supported yet
+      up to date: false
+    admin enforced: false
+    restrictions:
+      push:
+        enable: true
+        # exceptions: []
+        exceptions:
+          - type: User
+            login: bob
+          # - type: Team
+          #   name: red_team
+      dismiss review:
+        enable: false
+        exceptions: []
+      deletion:
+        enable: false

@@ -1,0 +1,18 @@
+---
+
+# This is an example of ghaudit user map configuration.
+
+# This configuration file describes a relationship between github logins, and
+# emails. ghaudit mainly relies on emails to identify users.
+
+map:
+  - email: alice@foobar.local
+    login: foobar-alice
+  - email: bob@foobar.local
+    login: zebob
+  - email: arthur@foobar.local
+    login: fb-arthur
+  - email: charlie@foobar.local
+    login: karl_fb
+  - email: conrad@foobaz.local
+    login: Conrad

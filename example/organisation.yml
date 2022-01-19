@@ -1,0 +1,49 @@
+---
+
+# This is an example of ghaudit main configuration.
+
+# This configuration file describes the expected structure or the organisation
+# members and teams hierarchy.
+
+# tip: YAML anchors can be used to define redundant information. Depending on
+# the configuration, this could be useful for defining a common email, a list of
+# common members, or even a list of common children teams. This is entirely
+# optional.
+bobs_mail: &bobs_mail bob@foobar.local
+
+organisation:
+  name: FooBar
+  owners:
+    # The organisation members with the Owner role. This gives them implicitly
+    # admin effective access to any repository.
+    - alice@foobar.local
+    - *bobs_mail
+  teams:
+    # In github teams can be organised in hierarchies. A team can have zero or
+    # more child team, and a team can have zero or more parents. Teams can be
+    # defined without any particular order, but when a child is referenced from
+    # a team, it must exist.
+    - name: main
+      members:
+        - arthur@foobar.local
+      children:
+        - team1
+        - team2
+        # - word_domination -> would not work
+    - name: meta
+      children: [team2]
+      # members is optional
+    - name: team1
+      members:
+        - charlie@foobar.local
+        - conrad@foobaz.local
+      # children is optional
+    - name: team2
+      # team2 has two parents: meta and main
+      members:
+        - alice@foobar.local
+        - *bobs_mail
+    - name: TheCoolTeam
+      members:
+        - alice@foobar.local
+        - *bobs_mail
