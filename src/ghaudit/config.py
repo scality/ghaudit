@@ -22,7 +22,7 @@ def get_teams(config: Config) -> Collection[Team]:
 
 def get_team(config: Config, name: str) -> Optional[Team]:
     elems = [x for x in get_teams(config) if x["name"] == name]
-    assert len(elems) <= 1
+    assert len(elems) <= 1  # nosec: testing only
     if elems:
         return elems[0]
     return None
@@ -81,7 +81,7 @@ def team_parents(config: Config, team: Team) -> Collection[Team]:
 
 def team_parent(config: Config, team: Team) -> Optional[Team]:
     elems = team_parents(config, team)
-    assert len(elems) <= 1
+    assert len(elems) <= 1  # nosec: testing only
     if elems:
         return next(iter(elems))
     return None
@@ -97,8 +97,7 @@ def team_ancestors(config: Config, team: Team) -> Set[str]:
 
 
 def user_teams(config: Config, email: str) -> Collection[Team]:
-    elems = [x for x in get_teams(config) if email in team_direct_members(x)]
-    return elems
+    return [x for x in get_teams(config) if email in team_direct_members(x)]
 
 
 def is_owner(config: Config, email: str) -> bool:
