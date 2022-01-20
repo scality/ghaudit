@@ -6,16 +6,16 @@ from ghaudit.query.utils import PageInfo
 
 
 class RepoBranchProtectionQuery(SubQueryCommon):
-    FRAG_REPO_BRANCH_PROTECTION_EDGE = "frag_repo_branch_protection_edge.j2"
-    FRAG_REPO_BRANCH_PROTECTION_ENTRY = "frag_repo_branch_protection_entry.j2"
+
+    FRAGMENTS = [
+        "frag_repo_branch_protection_edge.j2",
+        "frag_repo_branch_protection_entry.j2",
+    ]
 
     def __init__(self, repository: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,
-            [
-                RepoBranchProtectionQuery.FRAG_REPO_BRANCH_PROTECTION_EDGE,
-                RepoBranchProtectionQuery.FRAG_REPO_BRANCH_PROTECTION_ENTRY,
-            ],
+            self.FRAGMENTS,
             "repoBranchProtectionRules{}".format(num),
             {"organisation": "String!", "branchProtectionMax": "Int!"},
         )
@@ -42,5 +42,5 @@ class RepoBranchProtectionQuery(SubQueryCommon):
     def render(self, args: Mapping[str, ValidValueType]) -> str:
         return SubQueryCommon.render(
             self,
-            {**args, **{"num": self._num, "repository": self._repository}},
+            {**args, "num": self._num, "repository": self._repository},
         )

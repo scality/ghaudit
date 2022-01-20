@@ -6,16 +6,13 @@ from ghaudit.query.utils import PageInfo
 
 
 class TeamRepoQuery(SubQueryCommon):
-    FRAG_TEAM_REPO_EDGE = "frag_team_repo_edge.j2"
-    FRAG_TEAM_REPO_ENTRY = "frag_team_repo_entry.j2"
+
+    FRAGMENTS = ["frag_team_repo_edge.j2", "frag_team_repo_entry.j2"]
 
     def __init__(self, team: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,
-            [
-                TeamRepoQuery.FRAG_TEAM_REPO_EDGE,
-                TeamRepoQuery.FRAG_TEAM_REPO_ENTRY,
-            ],
+            self.FRAGMENTS,
             "teamRepo{}".format(num),
             {"organisation": "String!", "teamRepoMax": "Int!"},
         )
@@ -38,7 +35,7 @@ class TeamRepoQuery(SubQueryCommon):
 
     def render(self, args: Mapping[str, ValidValueType]) -> str:
         return SubQueryCommon.render(
-            self, {**args, **{"num": self._num, "team": self._team}}
+            self, {**args, "num": self._num, "team": self._team}
         )
 
     def __repr__(self) -> str:

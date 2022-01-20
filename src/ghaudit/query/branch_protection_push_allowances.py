@@ -7,16 +7,12 @@ from ghaudit.query.utils import PageInfo
 
 class BranchProtectionPushAllowances(SubQueryCommon):
 
-    FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES = (
-        "frag_branch_protection_push_allowances.j2"
-    )
+    FRAGMENTS = ["frag_branch_protection_push_allowances.j2"]
 
     def __init__(self, bp_id: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,
-            [
-                BranchProtectionPushAllowances.FRAG_BRANCH_PROTECTION_PUSH_ALLOWANCES,  # noqa: E501
-            ],
+            self.FRAGMENTS,
             "branchProtection{}".format(num),
             {"pushAllowancesMax": "Int!"},
         )
@@ -37,5 +33,5 @@ class BranchProtectionPushAllowances(SubQueryCommon):
 
     def render(self, args: Mapping[str, ValidValueType]) -> str:
         return SubQueryCommon.render(
-            self, {**args, **{"num": self._num, "bp_id": self._bp_id}}
+            self, {**args, "num": self._num, "bp_id": self._bp_id}
         )

@@ -6,16 +6,13 @@ from ghaudit.query.utils import PageInfo
 
 
 class TeamMemberQuery(SubQueryCommon):
-    FRAG_TEAM_MEMBER_EDGE = "frag_team_member_edge.j2"
-    FRAG_TEAM_MEMBER_ENTRY = "frag_team_member_entry.j2"
+
+    FRAGMENTS = ["frag_team_member_edge.j2", "frag_team_member_entry.j2"]
 
     def __init__(self, team: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,
-            [
-                TeamMemberQuery.FRAG_TEAM_MEMBER_EDGE,
-                TeamMemberQuery.FRAG_TEAM_MEMBER_ENTRY,
-            ],
+            self.FRAGMENTS,
             "teamMember{}".format(num),
             {"organisation": "String!", "teamMemberMax": "Int!"},
         )
@@ -36,7 +33,7 @@ class TeamMemberQuery(SubQueryCommon):
 
     def render(self, args: Mapping[str, ValidValueType]) -> str:
         return SubQueryCommon.render(
-            self, {**args, **{"num": self._num, "team": self._team}}
+            self, {**args, "num": self._num, "team": self._team}
         )
 
     def __repr__(self) -> str:

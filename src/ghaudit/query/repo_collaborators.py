@@ -6,16 +6,13 @@ from ghaudit.query.utils import PageInfo
 
 
 class RepoCollaboratorQuery(SubQueryCommon):
-    FRAG_REPO_USER_EDGE = "frag_repo_user_edge.j2"
-    FRAG_REPO_USER_ENTRY = "frag_repo_user_entry.j2"
+
+    FRAGMENTS = ["frag_repo_user_edge.j2", "frag_repo_user_entry.j2"]
 
     def __init__(self, repository: str, num: int, max_: int) -> None:
         SubQueryCommon.__init__(
             self,
-            [
-                RepoCollaboratorQuery.FRAG_REPO_USER_EDGE,
-                RepoCollaboratorQuery.FRAG_REPO_USER_ENTRY,
-            ],
+            self.FRAGMENTS,
             "repoCollaborator{}".format(num),
             {"organisation": "String!", "repoCollaboratorMax": "Int!"},
         )
@@ -41,7 +38,7 @@ class RepoCollaboratorQuery(SubQueryCommon):
     def render(self, args: Mapping[str, ValidValueType]) -> str:
         return SubQueryCommon.render(
             self,
-            {**args, **{"num": self._num, "repository": self._repository}},
+            {**args, "num": self._num, "repository": self._repository},
         )
 
     def __repr__(self) -> str:
