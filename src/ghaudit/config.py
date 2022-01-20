@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import reduce
 from os import environ
 from pathlib import Path
