@@ -1,6 +1,10 @@
+"""Miscellaneous routines."""
+
+from __future__ import annotations
+
 import json
 import logging
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, cast
 
 import requests
 
@@ -11,6 +15,12 @@ GITHUB_GRAPHQL_DEFAULT_ENDPOINT = "https://api.github.com/graphql"
 
 # pylint: disable=too-few-public-methods
 class LazyJsonFmt:
+    """Lazy JSON formatter for logging.
+
+    Defer the json.dumps operation of some arguments so that the formatting
+    actually only happens if a logging operation is actually evaluated.
+    """
+
     def __init__(self, argument: Any) -> None:
         self._argument = argument
 
@@ -22,13 +32,16 @@ def github_graphql_call(
     call_str: str,
     auth_driver: AuthDriver,
     variables: Iterable[str],
-    session: requests.Session = requests.session(),
+    session: requests.Session | None,
     endpoint: str = GITHUB_GRAPHQL_DEFAULT_ENDPOINT,
 ) -> Mapping[str, Any]:
+    """Make a GraphQL github API call."""
     logging.debug(
         'Github GraphQL query: "%s"',
         LazyJsonFmt({"query": call_str, "variables": json.dumps(variables)}),
     )
+    if not session:
+        session = requests.session()
     result_raw = session.post(
         endpoint,
         json={"query": call_str, "variables": json.dumps(variables)},
@@ -51,4 +64,4 @@ def github_graphql_call(
         raise RuntimeError(
             "github returned an error: {}".format(result["errors"])
         )
-    return result
+    return cast(Mapping[str, Any], result)
