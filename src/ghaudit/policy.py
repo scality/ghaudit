@@ -146,10 +146,7 @@ def _find_duplicates(
         hsequence = cast(Iterable[str], sequence)
     first_seen = set()  # type: Set[str]
     first_seen_add = first_seen.add
-    duplicates = set(
-        i for i in hsequence if i in first_seen or first_seen_add(i)
-    )
-    return duplicates
+    return {i for i in hsequence if i in first_seen or first_seen_add(i)}
 
 
 class Policy:
