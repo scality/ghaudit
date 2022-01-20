@@ -30,10 +30,10 @@ class BranchProtectionPushAllowances(SubQueryCommon):
         if root in response and "pushAllowances" in response[root]:
             if not self._page_info:
                 self._params[cursor_name] = "String!"
-            page_info = response[root]["pushAllowances"]["pageInfo"]
-            self._page_info = page_info  # type: PageInfo
-            self._values[cursor_name] = self._page_info["endCursor"]
-            self._count += 1
+            page_info = response[root]["pushAllowances"][
+                "pageInfo"
+            ]  # type: PageInfo
+            self._iterate(page_info, cursor_name)
 
     def render(self, args: Mapping[str, ValidValueType]) -> str:
         return SubQueryCommon.render(

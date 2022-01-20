@@ -1,6 +1,7 @@
 from typing import Any, Iterable, Mapping, MutableMapping
-from ghaudit.query.utils import jinja_env
+
 from ghaudit.query.sub_query import SubQuery, ValidValueType
+from ghaudit.query.utils import PageInfo, jinja_env
 
 
 class SubQueryCommon(SubQuery):
@@ -38,3 +39,8 @@ class SubQueryCommon(SubQuery):
         return "{}({}): {}".format(
             self._entry, self._count, repr(self._page_info)
         )
+
+    def _iterate(self, page_info: PageInfo, cursor_name: str) -> None:
+        self._page_info = page_info
+        self._values[cursor_name] = self._page_info["endCursor"]
+        self._count += 1

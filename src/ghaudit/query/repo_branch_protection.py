@@ -37,9 +37,7 @@ class RepoBranchProtectionQuery(SubQueryCommon):
                 ]  # type: PageInfo
             else:
                 page_info = {"hasNextPage": False, "endCursor": None}
-            self._page_info = page_info
-            self._values[cursor_name] = self._page_info["endCursor"]
-            self._count += 1
+            self._iterate(page_info, cursor_name)
 
     def render(self, args: Mapping[str, ValidValueType]) -> str:
         return SubQueryCommon.render(
