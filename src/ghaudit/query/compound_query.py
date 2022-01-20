@@ -3,13 +3,12 @@ import json
 import logging
 from typing import Any, List, Mapping, Set, TypedDict
 
-import jinja2
 import requests
 
 from ghaudit import utils
 from ghaudit.auth import AuthDriver
 from ghaudit.query.sub_query import SubQuery, ValidValueType
-from ghaudit.query.utils import page_info_continue
+from ghaudit.query.utils import jinja_env, page_info_continue
 
 
 class Stats(TypedDict):
@@ -19,14 +18,6 @@ class Stats(TypedDict):
 
 
 class CompoundQuery:
-    FRAG_ENTRY_MAIN = """
-query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% if not loop.last %}, {% endif %}{% endfor %}) {
-    {%- for fragment in fragments %}
-    ...{{ fragment }}
-    {%- endfor %}
-}
-"""
-
     def __init__(self, max_parallel: int) -> None:
         self._sub_queries = []  # type: List[SubQuery]
         self._common_frags = []  # type: List[str]
@@ -38,6 +29,9 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
             "done": 0,
         }  # type: Stats
         self._session = requests.session()
+        self._render_entry_point = jinja_env().get_template(
+            "compound_query.j2"
+        )
 
     def _parallel_wait(self) -> bool:
         """Check for contention so that max_parallel is respected."""
@@ -82,7 +76,8 @@ query org_infos({% for name, type in params.items() %}${{ name }}: {{ type }}{% 
         )  # type: Mapping[str, str]
         common_fragments = "".join(self._common_frags)
         fragments = [x.entry() for x in self._sub_queries]
-        main_frag = jinja2.Template(CompoundQuery.FRAG_ENTRY_MAIN).render(
+
+        main_frag = self._render_entry_point.render(
             {"params": params, "fragments": fragments}
         )
         sub_renders = "".join(
