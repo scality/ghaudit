@@ -1,3 +1,7 @@
+"""Read interface on the cached remote state."""
+
+from __future__ import annotations
+
 import logging
 from typing import (
     Any,
@@ -18,7 +22,7 @@ from typing_extensions import TypedDict
 
 TeamRole = Literal["MEMBER", "MAINTAINER"]
 OrgRole = Literal["MEMBER", "ADMIN"]
-CollaboratorRole = Literal["MEMBER", "ADMIN"]
+Perm = Literal["READ", "WRITE", "ADMIN"]
 
 UserID = Hashable
 TeamID = Hashable
@@ -44,7 +48,7 @@ class TeamRepoNode(TypedDict):
 
 class TeamRepoEdge(TypedDict):
     node: TeamRepoNode
-    permission: str
+    permission: Perm
 
 
 class TeamRepoEdges(TypedDict):
@@ -71,6 +75,7 @@ class TeamNode(TypedDict):
     members: TeamMemberEdges
     parentTeam: Optional[TeamRef]
     childTeams: ChildTeams
+    slug: str
 
 
 class Team(TypedDict):
@@ -102,7 +107,7 @@ class UserWithOrgRole(User):
 
 
 class RepoCollaborator(TypedDict):
-    role: CollaboratorRole
+    role: Perm
     node: UserNode
 
 
@@ -113,7 +118,7 @@ class RepoCollaboratorNode(TypedDict):
 
 class RepoCollaboratorEdge(TypedDict):
     node: RepoCollaboratorNode
-    permission: CollaboratorRole
+    permission: Perm
 
 
 class RepoCollaboratorEdges(TypedDict):
@@ -132,8 +137,7 @@ class Actor(TypedDict):
 BranchProtectionRuleID = Hashable
 
 
-# pylint: disable=too-few-public-methods
-class BPRReferenceRepoID:
+class BPRReferenceRepoID(TypedDict):
     id: Hashable
 
 
@@ -189,7 +193,7 @@ class Repo(TypedDict):
 
 class RepoWithPerms(TypedDict):
     node: RepoNode
-    permission: str
+    permission: Perm
 
 
 class RepoEdges(TypedDict):
@@ -259,7 +263,8 @@ def _get_unique_x_by_y(rstate: Rstate, seq_get, key: str, value):
 # users queries
 
 
-def user_by_login(rstate: Rstate, login: str) -> UserWithOrgRole:
+def user_by_login(rstate: Rstate, login: str) -> User | None:
+    """Return a user identified by login."""
     return _get_unique_x_by_y(rstate, users, "login", login)
 
 
@@ -269,7 +274,11 @@ def _user_by_id_noexcept(
     return rstate["data"]["users"].get(user_id)
 
 
-def user_by_id(rstate: Rstate, user_id: UserID) -> UserWithOrgRole:
+def user_by_id(rstate: Rstate, user_id: UserID) -> User:
+    """Return a user identified by ID.
+
+    :raises: RuntimeError if the identifier `id' is not found.
+    """
     user = _user_by_id_noexcept(rstate, user_id)
     if not user:
         raise RuntimeError('User not found from ID: "{}"'.format(user_id))
@@ -277,6 +286,7 @@ def user_by_id(rstate: Rstate, user_id: UserID) -> UserWithOrgRole:
 
 
 def users(rstate: Rstate) -> Collection[User]:
+    """Return the list of all known users from the remote state."""
     return rstate["data"]["users"].values()
 
 
@@ -284,30 +294,40 @@ def users(rstate: Rstate) -> Collection[User]:
 
 
 def org_repositories(rstate: Rstate) -> List[Repo]:
+    """Return the list of repositories in the organisation."""
     return _get_org_repos(rstate)
 
 
 def org_teams(rstate: Rstate) -> List[Team]:
+    """Return the list of teams in the organisation."""
     return _get_org_teams(rstate)
 
 
 def org_members(rstate: Rstate) -> List[UserWithOrgRole]:
-    return [user_by_id(rstate, x) for x in _get_org_members(rstate)]
+    """Return the list of members of the organisation."""
+    return [
+        cast(UserWithOrgRole, user_by_id(rstate, x))
+        for x in _get_org_members(rstate)
+    ]
 
 
 def org_team_by_id(rstate: Rstate, team_id: TeamID) -> Team:
+    """Return a team from the organisation identified by ID."""
     return _get_unique_x_by_y(rstate, _get_org_teams, "id", team_id)
 
 
 def org_team_by_name(rstate: Rstate, name: str) -> Team:
+    """Return a team from the organisation identified by name."""
     return _get_unique_x_by_y(rstate, _get_org_teams, "name", name)
 
 
 def org_repo_by_id(rstate: Rstate, repo_id: RepoID) -> Repo:
+    """Return a repository from the organisation identified by ID."""
     return _get_unique_x_by_y(rstate, _get_org_repos, "id", repo_id)
 
 
 def org_repo_by_name(rstate: Rstate, name: str) -> Repo:
+    """Return a repository from the organisation identified by name."""
     return _get_unique_x_by_y(rstate, _get_org_repos, "name", name)
 
 
@@ -315,26 +335,37 @@ def org_repo_by_name(rstate: Rstate, name: str) -> Repo:
 
 
 def repo_archived(repo: Repo) -> bool:
+    """Return whether the given repository is archived."""
     return repo["node"]["isArchived"]
 
 
 def repo_forked(repo: Repo) -> bool:
+    """Return whether the given repository is a fork."""
     return repo["node"]["isFork"]
 
 
 def repo_private(repo: Repo) -> bool:
+    """Return whether the given repository has the visibility to private."""
     return repo["node"]["isPrivate"]
 
 
 def repo_name(repo: Repo) -> str:
+    """Return the name of a given repository."""
     return repo["node"]["name"]
 
 
 def repo_description(repo: Repo) -> str:
+    """Return the description of a given repository."""
     return repo["node"]["description"]
 
 
 def repo_collaborators(rstate: Rstate, repo: Repo) -> List[RepoCollaborator]:
+    """Return the list of collaborators to the given repository.
+
+    The collaborators may be organisation members or external collaborators
+    with access to the repository.
+    """
+
     def mkobj(rstate: Rstate, edge: RepoCollaboratorEdge) -> RepoCollaborator:
         return {
             "role": edge["permission"],
@@ -348,6 +379,7 @@ def repo_collaborators(rstate: Rstate, repo: Repo) -> List[RepoCollaborator]:
 
 
 def repo_branch_protection_rules(repo: Repo) -> List[BranchProtectionRuleNode]:
+    """Return the list of branch protection rules from a given repository."""
     return repo["node"]["branchProtectionRules"]["nodes"]
 
 
@@ -362,6 +394,7 @@ def _repo_branch_protection_rules_noexcept(
 def repo_branch_protection_rule(
     repo: Repo, pattern: str
 ) -> Optional[BranchProtectionRuleNode]:
+    """Return a branch protection rule given a branch name pattern."""
     rules = repo_branch_protection_rules(repo)
     elems = [x for x in rules if branch_protection_pattern(x) == pattern]
     assert len(elems) <= 1  # nosec: testing only
@@ -374,14 +407,18 @@ def repo_branch_protection_rule(
 
 
 def team_name(team: Team) -> str:
+    """Return the name of a given team."""
     return team["node"]["name"]
 
 
 def team_description(team: Team) -> str:
+    """Return the description of a given team."""
     return team["node"]["description"]
 
 
 def team_repos(rstate: Rstate, team: Team) -> List[RepoWithPerms]:
+    """Return the list of repositories a team has effective access to."""
+
     def mkobj(rstate: Rstate, edge: TeamRepoEdge) -> RepoWithPerms:
         return {
             "permission": edge["permission"],
@@ -395,6 +432,8 @@ def team_repos(rstate: Rstate, team: Team) -> List[RepoWithPerms]:
 
 
 def team_members(rstate: Rstate, team: Team) -> List[UserWithRole]:
+    """Return the list of members of a given team."""
+
     def mkobj(rstate: Rstate, edge: TeamMemberEdge) -> UserWithRole:
         return {
             "role": edge["role"],
@@ -408,6 +447,7 @@ def team_members(rstate: Rstate, team: Team) -> List[UserWithRole]:
 
 
 def team_parent(rstate: Rstate, team: Team) -> Optional[Team]:
+    """Return the parent of a given team if it exists."""
     parent_team = team["node"]["parentTeam"]
     if parent_team:
         return org_team_by_id(rstate, parent_team)
@@ -415,6 +455,8 @@ def team_parent(rstate: Rstate, team: Team) -> Optional[Team]:
 
 
 def team_children(rstate: Rstate, team: Team) -> List[Team]:
+    """Return the list of direct children teams of a given team."""
+
     def mkobj(rstate: Rstate, edge: ChildTeam) -> Team:
         return {"node": org_team_by_id(rstate, edge["node"]["id"])["node"]}
 
@@ -428,22 +470,27 @@ def team_children(rstate: Rstate, team: Team) -> List[Team]:
 
 
 def user_name(user: User) -> Optional[str]:
+    """Return the name of a given user."""
     return user["node"]["name"]
 
 
 def user_login(user: User) -> str:
+    """Return the login of a given user."""
     return user["node"]["login"]
 
 
 def user_email(user: User) -> str:
+    """Return the email of a given user, as set in their account."""
     return user["node"]["email"]
 
 
 def user_company(user: User) -> str:
+    """Return the company of a given user, as set in their account."""
     return user["node"]["company"]
 
 
 def user_is_owner(user: UserWithOrgRole) -> bool:
+    """Return whether a given user has the owner role in the organisation."""
     return "role" in user and user["role"] == "ADMIN"
 
 
@@ -451,58 +498,74 @@ def user_is_owner(user: UserWithOrgRole) -> bool:
 
 
 def branch_protection_id(rule: BranchProtectionRuleNode) -> Hashable:
+    """Return the ID of a given branch protection rule."""
     return rule["id"]
 
 
 def branch_protection_pattern(rule: BranchProtectionRuleNode) -> str:
+    """Return the branch pattern name of a given branch protection rule."""
     return rule["pattern"]
 
 
 def branch_protection_admin_enforced(rule: BranchProtectionRuleNode) -> bool:
+    """Return whether an admin can overwrite branches.
+
+    Return whether an admin can overwrite branches with a name mathing to the
+    pattern of the given branch protection.
+    """
     return rule["isAdminEnforced"]
 
 
 def branch_protection_approvals(rule: BranchProtectionRuleNode) -> int:
+    """Are approving reviews required to update matching branches."""
     if rule["requiresApprovingReviews"]:
         return rule["requiredApprovingReviewCount"]
     return 0
 
 
 def branch_protection_owner_approval(rule: BranchProtectionRuleNode) -> bool:
+    """Are approving reviews required to update matching branches."""
     return rule["requiresCodeOwnerReviews"]
 
 
 def branch_protection_commit_signatures(
     rule: BranchProtectionRuleNode,
 ) -> bool:
+    """Are commits required to be signed to update matching branches."""
     return rule["requiresCommitSignatures"]
 
 
 def branch_protection_linear_history(rule: BranchProtectionRuleNode) -> bool:
+    """Are merge commits prohibited from being pushed to matching branches."""
     return rule["requiresLinearHistory"]
 
 
 def branch_protection_restrict_pushes(rule: BranchProtectionRuleNode) -> bool:
+    """Is pushing to matching branches restricted."""
     return rule["restrictsPushes"]
 
 
 def branch_protection_restrict_deletion(
     rule: BranchProtectionRuleNode,
 ) -> bool:
+    """Can matching branches be deleted."""
     return not rule["allowsDeletions"]
 
 
 def branch_protection_creator(rule: BranchProtectionRuleNode) -> str:
+    """Return the actor who created the given branch protection rule."""
     return rule["creator"]["login"]
 
 
 def branch_protection_push_allowances(
     rule: BranchProtectionRuleNode,
 ) -> List[PushAllowance]:
+    """Return the list of push allowances for the given branch protection."""
     return rule["pushAllowances"]
 
 
 def push_allowance_actor(allowance: PushAllowance) -> Actor:
+    """Return the actor that can dismiss the branch protection rule."""
     return allowance["actor"]
 
 
@@ -510,18 +573,22 @@ def push_allowance_actor(allowance: PushAllowance) -> Actor:
 
 
 def actor_type(actor: Actor) -> ActorType:
+    """Return the type of a given actor."""
     return actor["__typename"]
 
 
 def actor_get_user(rstate: Rstate, actor: Actor) -> User:
+    """Return a user from a given actor."""
     return user_by_id(rstate, actor["id"])
 
 
 def actor_get_team(rstate: Rstate, actor: Actor) -> Team:
+    """Return a team from a given actor."""
     return org_team_by_id(rstate, actor["id"])
 
 
-def actor_get_app(rstate, actor):
+def actor_get_app(rstate, actor) -> None:
+    """Return an App from a given actor."""
     raise NotImplementedError()
 
 
@@ -529,6 +596,11 @@ def actor_get_app(rstate, actor):
 
 
 def all_bp_rules(rstate: Rstate) -> Set[BranchProtectionRuleID]:
+    """Return the list of ID of all the branch protection rules.
+
+    Return the list of ID of all the branch protection rules from all
+    repositories.
+    """
     result = set()
     for repo in org_repositories(rstate):
         bprules = _repo_branch_protection_rules_noexcept(repo)
@@ -555,6 +627,7 @@ def _org_member_create(rstate: Rstate, member: Mapping) -> Rstate:
 
 
 def empty() -> Rstate:
+    """Initialise the remote state."""
     return {
         "data": {
             "users": {},
@@ -759,10 +832,15 @@ def _missing_members(rstate: Rstate, team: Team) -> List[Hashable]:
 
 
 def validate(rstate: Rstate) -> bool:
-    # * all repositories referenced by teams should be known
-    # * all users referenced by teams should be known
-    # * all users referenced by repositories should be known
-    # for team in org_teams(rstate):
+    """Validate the consistency of the remote state data structure.
+
+    Either return true if no error is found, or raise a RuntimeError. The
+    following checks are performed:
+
+     * all repositories referenced by teams should be known
+     * all users referenced by teams should be known
+     * all users referenced by repositories should be known
+    """
     for repo in org_repositories(rstate):
         for missing_login in missing_collaborators(rstate, repo):
             msg = 'unknown users "{}" referenced as collaborators of "{}"'
