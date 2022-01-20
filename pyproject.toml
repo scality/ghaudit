@@ -10,12 +10,40 @@ line-length = 79
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = [
-        "consider-using-f-string",
-        "missing-module-docstring",
-        "missing-class-docstring",
-        "missing-function-docstring",
+  "consider-using-f-string",
+  "missing-module-docstring",
+  "missing-class-docstring",
 ]
 
 [tool.isort]
 profile = "black"
 line_length = 79
+
+[tool.flake8]
+# requires python 3.8 because of typing.get_args is used at runtime
+min_python_version = "3.8"
+extend-ignore = "E203"
+
+[tool.mypy]
+files = [
+  "src/ghaudit/**.py",
+  "tests/**.py",
+]
+pretty = true
+warn_unused_configs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+ "ruamel.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--hypothesis-show-statistics --hypothesis-explain"
+testpaths = [
+  "tests",
+]
