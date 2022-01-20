@@ -1,3 +1,5 @@
+"""Display formatting primitives."""
+
 import json
 from functools import reduce
 from typing import (
@@ -24,7 +26,7 @@ class Formatter(NamedTuple):
 
 def _print_list_basic(elems: Sequence[Any], fmt: Formatter) -> str:
     def format_entry(elem: Any) -> str:
-        return " * {}".format(fmt.to_string(elem))
+        return " ◆ {}".format(fmt.to_string(elem))
 
     return reduce(lambda x, y: x + format_entry(y) + "\n", elems, "")
 
@@ -66,7 +68,7 @@ def _print_list_json(elems: Sequence[Any], fmt: Formatter) -> str:
     return json.dumps(list_of_dicts)
 
 
-def format_mode(mode: str) -> Callable[[Any, Formatter], str]:
+def _format_mode(mode: str) -> Callable[[Any, Formatter], str]:
     return {
         "basic": _print_list_basic,
         "json": _print_list_json,
@@ -74,13 +76,19 @@ def format_mode(mode: str) -> Callable[[Any, Formatter], str]:
     }[mode]
 
 
-def format_items(
+def _format_items(
     mode: DisplayMode, items: Iterable[Any], formatter: Formatter
 ) -> str:
-    return format_mode(mode)(items, formatter)
+    return _format_mode(mode)(items, formatter)
 
 
 def print_items(
     mode: DisplayMode, items: Iterable[Any], formatter: Formatter
 ) -> None:
-    print(format_items(mode, items, formatter))
+    """Display a list of items.
+
+    Display a list of items according to a mode and an object to string
+    formatter specification. Supported modes are json format, UTF-8 table, and
+    bullet list (`basic').
+    """
+    print(_format_items(mode, items, formatter))
