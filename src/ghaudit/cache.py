@@ -30,10 +30,6 @@ def file_path():
     return parent_dir() / "ghaudit" / "compliance" / "cache.json"
 
 
-def graphql_query_file_path():
-    return Path(__file__).parent / "queries" / "compliance"
-
-
 def load() -> schema.Rstate:
     with open(file_path(), encoding="UTF-8") as cache_file:
         rstate = json.load(cache_file)
