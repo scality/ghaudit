@@ -1,3 +1,5 @@
+"""Compliance checks."""
+
 from typing import Optional
 
 from ghaudit import cache, config, policy, schema, user_map
@@ -20,7 +22,7 @@ def check_team_unref(
     policy_: policy.Policy,
     team: schema.Team,
 ) -> bool:
-    """Check if team is referenced in configuration
+    """Check if team is referenced in configuration.
 
     Ignore teams that do not have access to repositories in scope
     """
@@ -48,7 +50,7 @@ def check_repo_unref(
     policy_: policy.Policy,
     repo: schema.Repo,
 ) -> bool:
-    """Check if repository is referenced in the policy
+    """Check if repository is referenced in the policy.
 
     Ignore repositories that are implicitly out of scope
     """
@@ -287,7 +289,7 @@ def check_user(
 def check_missing_repos(
     rstate: schema.Rstate, conf: config.Config, policy_: policy.Policy
 ) -> bool:
-    """Check if a repository is part of the policy_, but does not exist"""
+    """Check if a repository is part of the policy, but does not exist."""
     del conf
     errors = False
     for repo_name in policy.get_repos(policy_):
@@ -300,7 +302,7 @@ def check_missing_repos(
 def check_missing_teams(
     rstate: schema.Rstate, conf: config.Config, policy_: policy.Policy
 ) -> bool:
-    """Check if a team is part of the policy_, but does not exist"""
+    """Check if a team is part of the policy, but does not exist."""
     errors = False
     del policy_
     for team in config.get_teams(conf):
