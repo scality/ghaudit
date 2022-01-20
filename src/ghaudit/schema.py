@@ -736,18 +736,57 @@ def missing_collaborators(rstate: Rstate, repo: Repo) -> List[str]:
     return missing
 
 
+def _missing_repositories(rstate: Rstate, team: Team) -> List[Hashable]:
+    missing = []  # type: list[Hashable]
+    if "repositories" in team["node"] and team["node"]["repositories"]:
+        edges = team["node"]["repositories"]["edges"]
+        for edge in [x for x in edges if x is not None]:
+            repo_id = edge["node"]["id"]
+            if not org_repo_by_id(rstate, repo_id):
+                missing.append(repo_id)
+    return missing
+
+
+def _missing_members(rstate: Rstate, team: Team) -> List[Hashable]:
+    missing = []
+    if "members" in team["node"] and team["node"]["members"]:
+        edges = team["node"]["members"]["edges"]
+        for edge in [x for x in edges if x is not None]:
+            user_id = edge["node"]["id"]
+            if not _user_by_id_noexcept(rstate, user_id):
+                missing.append(edge["node"]["id"])
+    return missing
+
+
 def validate(rstate: Rstate) -> bool:
     # * all repositories referenced by teams should be known
     # * all users referenced by teams should be known
     # * all users referenced by repositories should be known
     # for team in org_teams(rstate):
     for repo in org_repositories(rstate):
-        for missing in missing_collaborators(rstate, repo):
-            msg = 'unknown user "{}" referenced as a collaborator of "{}"'
+        for missing_login in missing_collaborators(rstate, repo):
+            msg = 'unknown users "{}" referenced as collaborators of "{}"'
             raise RuntimeError(
                 msg.format(
-                    missing,
+                    missing_login,
                     repo_name(repo),
+                )
+            )
+    for team in org_teams(rstate):
+        for missing_id in _missing_repositories(rstate, team):
+            msg = 'unknown repositories referenced by ID "{}" in team "{}"'
+            raise RuntimeError(
+                msg.format(
+                    missing_id,
+                    team_name(team),
+                )
+            )
+        for missing_id in _missing_members(rstate, team):
+            msg = 'unknown repositories referenced by ID "{}" in team "{}"'
+            raise RuntimeError(
+                msg.format(
+                    missing_id,
+                    team_name(team),
                 )
             )
     return True
