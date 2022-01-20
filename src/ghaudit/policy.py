@@ -1,3 +1,5 @@
+"""Ghaudit policy to compare against."""
+
 import functools
 import logging
 import operator
@@ -151,6 +153,17 @@ def _find_duplicates(
 
 
 class Policy:
+    """The policy to compare against.
+
+    The policy describes:
+
+    - the access rights between teams and repositories, divided in rules
+    - users direct access to repositories (as exceptions)
+    - the visibility level of repositories
+    - branch protection rules
+    - repositories to ignore
+    """
+
     def __init__(self) -> None:
         self._default_visibility = None  # type: Optional[Visibility]
         self._repos = {}  # type: MutableMapping[str, Optional[Visibility]]
@@ -222,6 +235,7 @@ class Policy:
                     self._branch_protection[repo] = {pattern: value}
 
     def add_merge_rule(self, rule: RawRule) -> None:
+        """Add an access rule to the policy."""
         logging.debug("loading rule %s", rule["name"])
 
         if "team access" not in rule or "branch protection rules" not in rule:
@@ -244,10 +258,12 @@ class Policy:
             self._add_merge_rule_bpr(rule["branch protection rules"], repos)
 
     def add_repository_blacklist(self, repo: str) -> None:
+        """Add a repository to ignore by the policy."""
         logging.info("will ignore repository: %s", repo)
         self._repos_blacklist.append(repo)
 
     def add_repository(self, repo_data: RawRepoVisibility) -> None:
+        """Add a repository to the policy, with explicit visibility."""
         name = repo_data["repo"]
         visibility = repo_data["visibility"]
         if visibility not in typing_get_args(Visibility):
@@ -267,6 +283,7 @@ class Policy:
         self._repos[name] = visibility
 
     def set_default_visibility(self, visibility: Visibility) -> None:
+        """Set the default repository visibility for the policy."""
         if self._default_visibility and self._default_visibility != visibility:
             # pylint: disable=line-too-long
             msg = "Error: redefining default repository visibility to a different value ({}, already set to {})."  # noqa: E501
@@ -284,6 +301,7 @@ class Policy:
         self._default_visibility = visibility
 
     def sanity_check(self) -> None:
+        """Check the consistency of all the constraints in the policy."""
         intersection = [v for v in self._repos if v in self._repos_blacklist]
         if intersection:
             msg = 'Error: trying do use repositories set to be ignored: "{}".'
@@ -366,6 +384,7 @@ class Policy:
                 self._load_errors.append(msg.format(name))
 
     def load_config(self, data: Mapping) -> None:
+        """Load the policy from a dict."""
         if "repositories" in data:
             self._load_config_repositories(data["repositories"])
 
@@ -389,24 +408,29 @@ class Policy:
             raise RuntimeError(" \n".join(err))
 
     def team_repo_perm(self, team: str, repo: str) -> Optional[Perm]:
+        """Return the permissions of a team to a repository, if any."""
         key = Policy.team_access_key(team, repo)
         if key in self._team_access:
             return self._team_access[key]
         return None
 
     def get_repos(self) -> Collection[str]:
+        """Return the list of repositories defined in the policy."""
         return self._repos.keys()
 
     def is_excluded(self, repo: str) -> bool:
+        """Whether a repository is marked to be ignored in the policy."""
         return repo in self._repos_blacklist
 
     def user_access(self, login: str, repo: str) -> Optional[Perm]:
+        """Return the direct permissions of a user to a repository, if any."""
         key = Policy.user_access_key(login, repo)
         if key in self._user_access:
             return self._user_access[key]
         return None
 
     def repo_visibility(self, repo: str) -> Visibility:
+        """Return visibility of a repository according the policy."""
         visibility = (
             self._repos[repo]
             if self._repos[repo]
@@ -416,6 +440,11 @@ class Policy:
         return visibility
 
     def branch_protection_patterns(self, repo_name: str) -> Collection[str]:
+        """Return the list of branch name patterns to a repository.
+
+        Return the list of branch name patterns to a repository for the branch
+        protection rules.
+        """
         if repo_name in self._branch_protection:
             return self._branch_protection[repo_name].keys()
         return []
@@ -423,59 +452,82 @@ class Policy:
     def branch_protection_get(
         self, repo_name: str, pattern: str
     ) -> BranchProtectionRule:
+        """Return a branch protection rule to a repository for a pattern.
+
+        Return a branch protection rule to a repository for a given branch name
+        pattern. A branch protection rule must exist for this pattern.
+        Otherwise a `KeyError` exception will be raised.
+        """
         return self._branch_protection[repo_name][pattern]
 
     def branch_protection_get_model(self, modelname: str) -> BPRModel:
+        """Return the branch protection model identified by name.
+
+        The model must exist for this name. Otherwise a `KeyError` exception
+        will be raised.
+        """
         return self._branch_protection_model[modelname]
 
 
 def bprule_model_approvals(model: BPRModel) -> int:
+    """Return the minimum number of approvals required."""
     return model["requirements"]["approvals"]
 
 
 def bprule_model_owner_approval(model: BPRModel) -> bool:
+    """Return whether owner approvals is required."""
     return model["requirements"]["owner approval"]
 
 
 def bprule_model_commit_signatures(model: BPRModel) -> bool:
+    """Return whether commit are required to be signed."""
     return model["requirements"]["commit signatures"]
 
 
 def bprule_model_linear_history(model: BPRModel) -> bool:
+    """Return whether merge commit are allowed."""
     return model["requirements"]["linear history"]
 
 
 def bprule_model_admin_enforced(model: BPRModel) -> bool:
+    """Return whether admins can bypass constraints."""
     return model["admin enforced"]
 
 
 def bprule_model_restrict_pushes(model: BPRModel) -> bool:
+    """Return whether push operations are restricted."""
     return model["restrictions"]["push"]["enable"]
 
 
 def bprule_model_push_allowances(model: BPRModel) -> List[BPRPushAllowance]:
+    """Return the list of push allowances."""
     return model["restrictions"]["push"]["exceptions"]
 
 
 def bprule_model_push_allowance_type(
     push_allowance: BPRPushAllowance,
 ) -> schema.ActorType:
+    """Return the type of actor of a push allowance."""
     return push_allowance["type"]
 
 
 def bprule_model_push_allowance_user_login(push_allowance: UserActor) -> str:
+    """Return the user login of a push allowance."""
     return push_allowance["login"]
 
 
 def bprule_model_push_allowance_team_name(push_allowance: TeamActor) -> str:
+    """Return the team name of a push allowance."""
     return push_allowance["name"]
 
 
 # def bprule_model_push_allowance_app_name(push_allowance):
+# """Return the App name of a push allowance."""
 #     return push_allowance["name"]
 
 
 def bprule_model_restrict_deletion(model: BPRModel) -> bool:
+    """Return whether the branch can be deleted."""
     return model["restrictions"]["deletion"]["enable"]
 
 
@@ -484,6 +536,7 @@ def cmp_actor(
     from_rule: schema.PushAllowance,
     from_model: BPRPushAllowance,
 ) -> bool:
+    """Compare actors between the remote state and the policy."""
     get_map = {
         "User": (
             lambda x: schema.user_login(schema.actor_get_user(rstate, x)),
@@ -520,6 +573,7 @@ def cmp_actors_baseline(
     from_rules: Iterable[schema.PushAllowance],
     from_models: List[BPRPushAllowance],
 ) -> bool:
+    """Compare actors in baseline mode."""
     logging.debug(
         "cmp baseline models: %s, rules: %s", from_models, from_rules
     )
@@ -531,6 +585,7 @@ def cmp_actors_baseline(
 
 
 def cmp_actors_strict(rstate: schema.Rstate, from_rules, from_models) -> bool:
+    """Compare actors in strict mode."""
     if len(from_rules) != len(from_models):
         return False
     return cmp_actors_baseline(rstate, from_rules, from_models)
@@ -543,6 +598,16 @@ def bprule_cmp(
     modelname: str,
     mode: BPRMode,
 ) -> List[str]:
+    """Compare branch protection rules between remote state and policy.
+
+    The comparison can happen in two mode, specified in the policy:
+
+     * the strict mode, which applies strict comparisons for all branch
+       protection properties
+     * the baseline mode, which requires the remote state to be at least
+       equivalent or more constrained than the policy
+    """
+
     def cmp_bool_baseline(from_rule: bool, from_model: bool) -> bool:
         return from_rule if from_model else not from_model
 
@@ -613,30 +678,49 @@ def bprule_cmp(
 def branch_protection_patterns(
     policy: Policy, repo_name: str
 ) -> Collection[str]:
+    """Return the list of branch name patterns to a repository.
+
+    Return the list of branch name patterns to a repository for the branch
+    protection rules.
+    """
     return policy.branch_protection_patterns(repo_name)
 
 
 def branch_protection_get(
     policy: Policy, repo_name: str, pattern: str
 ) -> BranchProtectionRule:
+    """Return a branch protection rule to a repository for a pattern.
+
+    Return a branch protection rule to a repository for a given branch name
+    pattern. A branch protection rule must exist for this pattern.
+    Otherwise a `KeyError` exception will be raised.
+    """
     return policy.branch_protection_get(repo_name, pattern)
 
 
 def repo_excluded(policy: Policy, repo: schema.Repo) -> bool:
+    """Return whether a repository is marked to be ignored in the policy."""
     return policy.is_excluded(schema.repo_name(repo))
 
 
 def repo_in_scope(policy: Policy, repo: schema.Repo) -> bool:
+    """Check whether a repository is in the scope of the policy.
+
+    Archived and forked repositories are implicitly exluded by default. Other
+    repositories can be explicitly excluded as well in the policy.
+    """
     return not repo_excluded(policy, repo) and not (
         schema.repo_archived(repo) or schema.repo_forked(repo)
     )
 
 
 def get_repos(policy: Policy) -> Collection[str]:
+    """Return the list of repositories defined in the policy."""
     return policy.get_repos()
 
 
-def perm_translate(perm: str) -> Perm:
+def perm_translate(perm: schema.Perm) -> Perm:
+    """Translate remote state permission format and policy format."""
     perm_map = {
         "READ": "read",
         "WRITE": "write",
@@ -645,8 +729,8 @@ def perm_translate(perm: str) -> Perm:
     return perm_map[perm]
 
 
-# check if perm1 is higher than perm2
 def perm_higher(perm1: Perm, perm2: Perm) -> bool:
+    """Check if `perm1' is higher than `perm2'."""
     assert perm1 in typing_get_args(Perm)  # nosec: testing only
     if perm1 == "read":
         return False
@@ -659,6 +743,7 @@ def perm_higher(perm1: Perm, perm2: Perm) -> bool:
 def perm_highest(
     perm1: Optional[Perm], perm2: Optional[Perm]
 ) -> Optional[Perm]:
+    """Find the highest of two given permissions."""
     if not perm1 and not perm2:
         return None
     if not perm1:
@@ -677,9 +762,10 @@ def perm_highest(
 def team_repo_explicit_perm(
     conf: config.Config, policy: Policy, team_name: str, repo: schema.Repo
 ) -> Optional[Perm]:
-    """
-    returns the permissions of a team as explicitly defined in the policy,
-    without taking into account ancestors permissions
+    """Return the direct permissions of a team to a repository.
+
+    Returns the permissions of a team as explicitly defined in the policy,
+    without taking into account ancestors permissions.
     """
     del conf
     return policy.team_repo_perm(team_name, schema.repo_name(repo))
@@ -691,9 +777,10 @@ def team_repo_effective_perm(
     conf_team: config.Team,
     repo: schema.Repo,
 ) -> Optional[Perm]:
-    """
-    returns the effective permissions of a team, taking into account
-    ancestors permissions
+    """Return the effective permissions of a team to a repository.
+
+    Returns the effective permissions of a team, taking into account ancestors
+    permissions.
     """
     related_teams = config.team_ancestors(conf, conf_team)
     related_teams.add(config.team_name(conf_team))
@@ -706,9 +793,10 @@ def team_repo_effective_perm(
 def team_repo_perm(
     conf: config.Config, policy: Policy, team_name: str, repo: schema.Repo
 ) -> Optional[Perm]:
-    """
-    returns the effective permission of a team if the repository
-    is part of the policy.
+    """Optionally return the effective permissions of a team to a repository.
+
+    Returns the effective permission of a team if the repository is part of the
+    policy.
     """
     conf_team = config.get_team(conf, team_name)
 
@@ -724,6 +812,12 @@ def user_perm(
     repo: schema.Repo,
     login: str,
 ) -> Optional[Perm]:
+    """Return the effective permissions of a user to a repository.
+
+    If the user is defined as an owner of the organisation, the effective
+    permissions are `admin'. Otherwise, the highest permissions between direct
+    permissions and the permissions granted to the user's teams are returned.
+    """
     email = user_map.email(usermap, login)
     if email and config.is_owner(conf, email):
         return "admin"
@@ -744,4 +838,5 @@ def user_perm(
 
 
 def repo_visibility(policy: Policy, repo_name: str) -> Visibility:
+    """Return the desired visibility for a repository in the policy."""
     return policy.repo_visibility(repo_name)
