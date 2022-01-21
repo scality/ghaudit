@@ -15,6 +15,9 @@ def github_auth_token_passpy(path: str) -> AuthDriver:
     """
 
     def get_token(path: str) -> str:
-        return passpy.store.Store().get_key(path).strip()
+        token = passpy.store.Store().get_key(path)
+        if not token:
+            raise RuntimeError("{} not found.".format(path))
+        return token.strip()
 
     return lambda: {"Authorization": "token " + get_token(path)}
