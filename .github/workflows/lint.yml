@@ -1,44 +1,63 @@
 ---
-name: lint
+name: linters
 
 on: push
 
 jobs:
-  lint:
+  lint-coding-stype:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-
     # - name: install spell checkers
     #   run: sudo apt-get install -y enchant aspell
-
     - name: setup ghaudit
       uses: ./.github/workflows/composite/ghaudit-setup
       with:
         python-version: "3.10"
-        packages: bandit black dlint flake8 flake8-bugbear flake8-comprehensions flake8-isort flake8-pie flake8-typing-imports hypothesis mypy==0.931 pylint pyproject-flake8 safety types-jinja2 types-passpy types-requests
-
-    - name: Check code with Bandit
+        packages: black dlint flake8 flake8-bugbear flake8-comprehensions flake8-isort flake8-pie flake8-typing-imports hypothesis pylint pyproject-flake8
+    - name: Check coding style with black
       if: always()
-      run: |
-        bandit -r src/ghaudit
-    - name: Check vulnerabilities with safety
-      if: always()
-      run: |
-        safety check
+      run: black --diff --check src/ghaudit tests
     - name: Lint with flake8
       if: always()
-      run: |
-        pflake8 --show-source --statistics src/ghaudit tests
+      run: pflake8 --show-source --statistics src/ghaudit tests
     - name: Lint with pylint
       if: always()
-      run: |
-        PYLINTHOME=pylint-home pylint --fail-under 9.65 src/ghaudit tests
-    - name: Analyse with mypy
+      run: PYLINTHOME=pylint-home pylint --fail-under 9.65 src/ghaudit tests
+
+  lint-typing:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup ghaudit
+      uses: ./.github/workflows/composite/ghaudit-setup
+      with:
+        python-version: "3.10"
+        packages: hypothesis mypy==0.931 types-jinja2 types-passpy types-requests
+    - name: Analyse code with mypy
+      run: mypy
+
+  lint-code-security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup ghaudit
+      uses: ./.github/workflows/composite/ghaudit-setup
+      with:
+        python-version: "3.10"
+        packages: bandit
+    - name: Analyse code with Bandit
       if: always()
-      run: |
-        mypy
-    - name: check coding style
-      if: always()
-      run: |
-        black --diff --check src/ghaudit tests
+      run: bandit -r src/ghaudit
+
+  vulnerabilities:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup ghaudit
+      uses: ./.github/workflows/composite/ghaudit-setup
+      with:
+        python-version: "3.10"
+        packages: safety
+    - name: Check for known vulnerabilities in dependencies with safety
+      run: safety check
