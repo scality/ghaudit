@@ -1,0 +1,34 @@
+---
+name: tests
+
+on: push
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup ghaudit
+      uses: ./.github/workflows/composite/ghaudit-setup
+      with:
+        python-version: ${{ matrix.python-version }}
+        packages: pytest>=6.0 hypothesis pytest-html
+    - name: caching hypothesis
+      uses: actions/cache@v2
+      with:
+        path: .hypothesis
+        key: hypothesis-cache-${{ runner.os }}-${{ matrix.python-version }}
+    - name: smoke test
+      run: ghaudit
+    - name: run tests
+      run: pytest --html=pytest-reports/pytest-py${{ matrix.python-version }}.html
+    - name: upload artifacts
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: reports-${{ matrix.python-version }}
+        path: pytest-reports/
+        if-no-files-found: error
