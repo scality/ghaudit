@@ -23,6 +23,7 @@ from ghaudit.query.team_children import TeamChildrenQuery
 from ghaudit.query.team_permission import TeamRepoQuery
 from ghaudit.query.user import UserQuery
 from ghaudit.query.user_role import TeamMemberQuery
+from ghaudit.ui import ProgressCB
 
 
 def file_path() -> Path:
@@ -62,9 +63,11 @@ def store(data: schema.Rstate) -> None:
         fsync(cache_file.fileno())
 
 
-def refresh(config: Config, auth_driver: auth.AuthDriver) -> None:
+def refresh(
+    config: Config, auth_driver: auth.AuthDriver, progress: ProgressCB
+) -> None:
     """Refresh the remote state from github to a local file."""
-    data = _sync(config, auth_driver)
+    data = _sync(config, auth_driver, progress)
     print("validating cache")
     if schema.validate(data):
         print("persisting cache")
@@ -84,18 +87,30 @@ ORG_MEMBERS_MAX = 90
 ORG_REPOSITORIES_MAX = 90
 
 
-def _sync_progress(data, query):
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    print(query.stats())
-    print("teams: {}".format(len(schema.org_teams(data))))
-    print("repositories: {}".format(len(schema.org_repositories(data))))
-    print("members: {}".format(len(schema.org_members(data))))
-    print("users: {}".format(len(schema.users(data))))
-    print("branch protection rules: {}".format(len(schema.all_bp_rules(data))))
-    print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+def _sync_progress(data, query, found, progress: ProgressCB):
+    stats = query.stats()
+    progress(
+        [
+            ("total HTTP roundtrips", stats["iterations"]),
+            ("graphQL queries", stats["done"], stats["queries"]),
+            ("teams", len(schema.org_teams(data)), len(found["teams"])),
+            (
+                "repositories",
+                len(schema.org_repositories(data)),
+                len(found["repositories"]),
+            ),
+            ("org members", len(schema.org_members(data))),
+            ("users", len(schema.users(data))),
+            (
+                "branch protection rules",
+                len(schema.all_bp_rules(data)),
+                len(found["bprules"]),
+            ),
+        ]
+    )
 
 
-def _sync(config: Config, auth_driver):
+def _sync(config: Config, auth_driver, progress: ProgressCB):
     data = schema.empty()
     found = {
         "teams": [],
@@ -179,6 +194,6 @@ def _sync(config: Config, auth_driver):
             workaround2["bprules"] += 1
             found["bprules"].append(str(rule_id))
 
-        _sync_progress(data, query)
+        _sync_progress(data, query, found, progress)
 
     return data

@@ -108,7 +108,11 @@ def cache_refresh(ctx: click.Context, token_pass_name: str) -> None:
     cache file to evaluate later.
     """
     auth_driver = auth.github_auth_token_passpy(token_pass_name)
-    cache.refresh(ctx.obj["config"](), auth_driver)
+    cache.refresh(
+        ctx.obj["config"](),
+        auth_driver,
+        ui.Progress(),
+    )
 
 
 def _user_short_str(user: schema.User) -> str:
