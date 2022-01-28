@@ -1,6 +1,8 @@
 """CLI interface."""
 
-from typing import Any, Callable, Iterable, Mapping, Optional, cast
+from __future__ import annotations
+
+from typing import Any, Callable, Iterable
 
 import click
 from ruamel.yaml import YAML
@@ -23,17 +25,18 @@ except ImportError:
     from typing_extensions import get_args as typing_get_args
 
 
-def _load_organisation_conf(filename: str) -> user_map.RawData:
+def _load_organisation_conf(
+    filename: str, usermap: Callable[[], user_map.UserMap]
+) -> config.Config:
     with open(filename, encoding="UTF-8") as conf_file:
         conf = YAML(typ="safe").load(conf_file)
-    return cast(user_map.RawData, conf)
+    return config.load(conf, usermap())
 
 
-def _load_user_map_conf(filename: str) -> Mapping:
+def _load_user_map_conf(filename: str) -> user_map.UserMap:
     with open(filename, encoding="UTF-8") as usermap_file:
         usermap_data = YAML(typ="safe").load(usermap_file)
-        usermap = user_map.load(usermap_data)
-    return usermap
+    return user_map.load(usermap_data)
 
 
 def _load_policy_conf(filename: str) -> policy.Policy:
@@ -68,8 +71,10 @@ def cli(
 ) -> None:
     """Github organisation security auditing tool."""
     ctx.ensure_object(dict)
-    ctx.obj["config"] = lambda: _load_organisation_conf(config_filename)
     ctx.obj["usermap"] = lambda: _load_user_map_conf(usermap_filename)
+    ctx.obj["config"] = lambda: _load_organisation_conf(
+        config_filename, ctx.obj["usermap"]
+    )
     ctx.obj["policy"] = lambda: _load_policy_conf(policy_filename)
 
 
@@ -161,7 +166,7 @@ def _common_list(
     list_func: Callable[[schema.Rstate], Iterable[Any]],
     mode: ui.DisplayMode,
     fmt: ui.Formatter,
-    rstate: Optional[schema.Rstate] = None,
+    rstate: schema.Rstate | None = None,
 ) -> None:
     if not rstate:
         rstate = cache.load()

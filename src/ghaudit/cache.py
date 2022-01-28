@@ -8,7 +8,7 @@ from os import environ, fsync, makedirs, path, rename
 from pathlib import Path
 from typing import Dict, List
 
-from ghaudit import auth, schema
+from ghaudit import auth, config, schema
 from ghaudit.config import Config
 from ghaudit.query.branch_protection_push_allowances import (
     BranchProtectionPushAllowances,
@@ -64,10 +64,10 @@ def store(data: schema.Rstate) -> None:
 
 
 def refresh(
-    config: Config, auth_driver: auth.AuthDriver, progress: ProgressCB
+    config_: Config, auth_driver: auth.AuthDriver, progress: ProgressCB
 ) -> None:
     """Refresh the remote state from github to a local file."""
-    data = _sync(config, auth_driver, progress)
+    data = _sync(config_, auth_driver, progress)
     print("validating cache")
     if schema.validate(data):
         print("persisting cache")
@@ -110,7 +110,7 @@ def _sync_progress(data, query, found, progress: ProgressCB):
     )
 
 
-def _sync(config: Config, auth_driver, progress: ProgressCB):
+def _sync(config_: Config, auth_driver, progress: ProgressCB):
     data = schema.empty()
     found = {
         "teams": [],
@@ -121,7 +121,7 @@ def _sync(config: Config, auth_driver, progress: ProgressCB):
     workaround2 = {"team": 0, "repo": 0, "user": 0, "bprules": 0}
     query = CompoundQuery(MAX_PARALLEL_QUERIES)
     demo_params = {
-        "organisation": config["organisation"]["name"],
+        "organisation": config.get_org_name(config_),
         "teamsMax": ORG_TEAMS_MAX,
         "membersWithRoleMax": ORG_MEMBERS_MAX,
         "repositoriesMax": ORG_REPOSITORIES_MAX,

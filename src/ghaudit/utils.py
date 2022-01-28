@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Iterable, Mapping, cast
+from typing import Any, Callable, Iterable, Mapping, Set, TypeVar, cast
 
 import requests
 
@@ -65,3 +65,20 @@ def github_graphql_call(
             "github returned an error: {}".format(result["errors"])
         )
     return cast(Mapping[str, Any], result)
+
+
+# pylint: disable=invalid-name
+T = TypeVar("T")
+
+
+def find_duplicates(
+    sequence: Iterable[T],
+    hash_func: Callable[[T], str] | None = None,
+) -> Set[str]:
+    if hash_func:
+        hsequence = cast(Iterable[str], map(hash_func, sequence))
+    else:
+        hsequence = cast(Iterable[str], sequence)
+    first_seen = set()  # type: Set[str]
+    first_seen_add = first_seen.add
+    return {i for i in hsequence if i in first_seen or first_seen_add(i)}

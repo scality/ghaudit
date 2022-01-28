@@ -15,9 +15,7 @@ from typing import (
     MutableMapping,
     NewType,
     Optional,
-    Set,
     Tuple,
-    TypeVar,
     Union,
     cast,
 )
@@ -26,6 +24,7 @@ from typing import get_args as typing_get_args
 from typing_extensions import TypedDict
 
 from ghaudit import config, schema, user_map
+from ghaudit.utils import find_duplicates
 
 Perm = Literal["read", "write", "admin"]
 BPRMode = Literal["baseline", "strict"]
@@ -132,23 +131,6 @@ RawRule = TypedDict(
 )
 
 
-# pylint: disable=invalid-name
-T = TypeVar("T")
-
-
-def _find_duplicates(
-    sequence: Iterable[T],
-    hash_func: Optional[Callable[[T], str]] = None,
-) -> Set[str]:
-    if hash_func:
-        hsequence = cast(Iterable[str], map(hash_func, sequence))
-    else:
-        hsequence = cast(Iterable[str], sequence)
-    first_seen = set()  # type: Set[str]
-    first_seen_add = first_seen.add
-    return {i for i in hsequence if i in first_seen or first_seen_add(i)}
-
-
 class Policy:
     """The policy to compare against.
 
@@ -240,7 +222,7 @@ class Policy:
 
         repos = rule["repositories"]
 
-        duplicates = _find_duplicates(repos)
+        duplicates = find_duplicates(repos)
         if duplicates:
             # pylint: disable=line-too-long
             msg = 'Error: duplicate definition of the repository "{}" in rule "{}"'  # noqa: E501
@@ -323,7 +305,7 @@ class Policy:
                 self._load_errors.append(msg.format(bprule.model))
 
     def _load_config_repositories(self, repos_config: Mapping) -> None:
-        duplicates = _find_duplicates(
+        duplicates = find_duplicates(
             repos_config["visibility"],
             cast(Callable[[Mapping[str, str]], str], lambda x: x["repo"]),
         )
@@ -339,7 +321,7 @@ class Policy:
             self.add_repository(repo_data)
 
         if "exceptions" in repos_config and repos_config["exceptions"]:
-            duplicates = _find_duplicates(repos_config["exceptions"])
+            duplicates = find_duplicates(repos_config["exceptions"])
             if duplicates:
                 # pylint: disable=line-too-long
                 msg = 'Error: trying to ignore the following repositories more than once: "{}"'  # noqa: E501
