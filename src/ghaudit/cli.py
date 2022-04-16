@@ -277,7 +277,7 @@ def org_members_group() -> None:
 @click.option(
     "--format",
     "mode",
-    type=click.Choice(["basic", "json", "table"]),
+    type=click.Choice(typing_get_args(ui.DisplayMode)),
     default="basic",
 )
 def org_members_list(mode: ui.DisplayMode) -> None:
@@ -336,7 +336,7 @@ def org_teams_tree() -> None:
 @click.option(
     "--format",
     "mode",
-    type=click.Choice(["basic", "json", "table"]),
+    type=click.Choice(typing_get_args(ui.DisplayMode)),
     default="basic",
 )
 def org_teams_list(mode: ui.DisplayMode) -> None:
@@ -539,7 +539,7 @@ def config_group() -> None:
 @click.option(
     "--format",
     "mode",
-    type=click.Choice(["basic", "extended", "json", "table"]),
+    type=click.Choice(typing_get_args(ui.DisplayMode)),
     default="basic",
 )
 @click.pass_context
@@ -577,7 +577,7 @@ def config_show(ctx: click.Context, mode: ui.DisplayMode) -> None:
 @click.option(
     "--format",
     "mode",
-    type=click.Choice(["basic", "extended", "json", "table"]),
+    type=click.Choice(typing_get_args(ui.DisplayMode)),
     default="basic",
 )
 @click.argument("email")
