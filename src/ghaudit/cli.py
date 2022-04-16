@@ -528,3 +528,87 @@ def usermap_get_login(ctx: click.Context, email: str) -> None:
 def usermap_get_email(ctx: click.Context, login: str) -> None:
     """Show the email of an organisation member given their login."""
     print(user_map.email(ctx.obj["usermap"](), login))
+
+
+@cli.group("config")
+def config_group() -> None:
+    """Configuration management."""
+
+
+@config_group.command("show")
+@click.option(
+    "--format",
+    "mode",
+    type=click.Choice(["basic", "extended", "json", "table"]),
+    default="basic",
+)
+@click.pass_context
+def config_show(ctx: click.Context, mode: ui.DisplayMode) -> None:
+    """Display the organisation configuration."""
+    cfg = ctx.obj["config"]()
+    ui.print_items(
+        mode,
+        config.get_teams(cfg),
+        ui.Formatter(
+            (
+                ("name", 20),
+                ("direct members", 100),
+                ("effective members", 100),
+                ("children", 30),
+                ("descendants", 30),
+                ("parents", 30),
+                ("ancestors", 30),
+            ),
+            lambda x: (
+                (config.team_name(x), 20),
+                (config.team_direct_members(x), 30),
+                (config.team_effective_members(cfg, x), 30),
+                (config.team_children(x), 15),
+                (config.team_descendants(cfg, x), 15),
+                (set(map(config.team_name, config.team_parents(cfg, x))), 15),
+                (config.team_ancestors(cfg, x), 15),
+            ),
+            config.team_name,
+        ),
+    )
+
+
+@config_group.command("user-teams")
+@click.option(
+    "--format",
+    "mode",
+    type=click.Choice(["basic", "extended", "json", "table"]),
+    default="basic",
+)
+@click.argument("email")
+@click.pass_context
+def config_user_teams(
+    ctx: click.Context, email: str, mode: ui.DisplayMode
+) -> None:
+    """Display the organisation configuration."""
+    cfg = ctx.obj["config"]()
+    ui.print_items(
+        mode,
+        config.user_teams(cfg, email),
+        ui.Formatter(
+            (
+                ("name", 20),
+                ("direct members", 100),
+                ("effective members", 100),
+                ("children", 30),
+                ("descendants", 30),
+                ("parents", 30),
+                ("ancestors", 30),
+            ),
+            lambda x: (
+                (config.team_name(x), 20),
+                (config.team_direct_members(x), 30),
+                (config.team_effective_members(cfg, x), 30),
+                (config.team_children(x), 15),
+                (config.team_descendants(cfg, x), 15),
+                (set(map(config.team_name, config.team_parents(cfg, x))), 15),
+                (config.team_ancestors(cfg, x), 15),
+            ),
+            config.team_name,
+        ),
+    )
