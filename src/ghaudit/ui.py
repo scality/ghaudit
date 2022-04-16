@@ -100,8 +100,13 @@ def _print_list_table(elems: Sequence[Any], fmt: Formatter) -> str:
 
 def _print_list_json(elems: Sequence[Any], fmt: Formatter) -> str:
     def elem_to_dict(elem: Any) -> Mapping[str, str]:
+        def convert_value(field_value: str | Iterable[str] | None):
+            if isinstance(field_value, str) or field_value is None:
+                return field_value
+            return list(field_value)
+
         zipped = zip(fmt.to_fields(elem), fmt.table_fields)
-        return {x[1][0]: str(x[0][0]) for x in zipped}
+        return {x[1][0]: convert_value(x[0][0]) for x in zipped}
 
     list_of_dicts = reduce(
         lambda x, y: x + [elem_to_dict(y)], elems, []
