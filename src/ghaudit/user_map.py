@@ -1,8 +1,8 @@
 """Mapping operations between github user logins and organisation emails."""
 
-from typing import Collection, Mapping, MutableMapping, Optional, cast
+from __future__ import annotations
 
-from typing_extensions import TypedDict
+from typing import Collection, Mapping, MutableMapping, TypedDict, cast
 
 
 class RawDataEntry(TypedDict):
@@ -39,14 +39,14 @@ def load(data: RawData) -> UserMap:
     return cast(UserMap, usermap)
 
 
-def email(usermap: UserMap, user_login: str) -> Optional[str]:
+def email(usermap: UserMap, user_login: str) -> str | None:
     """Return an email given a user login."""
     if user_login in usermap["by_login"]:
         return usermap["by_login"][user_login]
     return None
 
 
-def login(usermap: UserMap, user_email: str) -> Optional[str]:
+def login(usermap: UserMap, user_email: str) -> str | None:
     """Return an login given a user email."""
     if user_email in usermap["by_email"]:
         return usermap["by_email"][user_email]

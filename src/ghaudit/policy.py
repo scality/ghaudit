@@ -1,5 +1,7 @@
 """Ghaudit policy to compare against."""
 
+from __future__ import annotations
+
 import functools
 import logging
 import operator
@@ -14,14 +16,12 @@ from typing import (
     Mapping,
     MutableMapping,
     NewType,
-    Optional,
     Tuple,
+    TypedDict,
     Union,
     cast,
 )
 from typing import get_args as typing_get_args
-
-from typing_extensions import TypedDict
 
 from ghaudit import config, schema, user_map
 from ghaudit.utils import find_duplicates
@@ -101,7 +101,7 @@ BPRMapping = MutableMapping[str, BPRMappingPattern]
 # mapping between a name and BPRModel
 BPRModelMapping = MutableMapping[str, BPRModel]
 
-TeamAccessMapping = MutableMapping[TeamAccessKey, Optional[Perm]]
+TeamAccessMapping = MutableMapping[TeamAccessKey, Perm | None]
 
 # see cmp_actor
 CmpActorDispatch = Mapping[
@@ -144,8 +144,8 @@ class Policy:
     """
 
     def __init__(self) -> None:
-        self._default_visibility = None  # type: Optional[Visibility]
-        self._repos = {}  # type: MutableMapping[str, Optional[Visibility]]
+        self._default_visibility = None  # type: Visibility | None
+        self._repos = {}  # type: MutableMapping[str, Visibility | None]
         self._repos_blacklist = []  # type: List[str]
         self._team_access = {}  # type: TeamAccessMapping
         self._user_access = {}  # type: MutableMapping[UserAccessKey, Perm]
@@ -386,7 +386,7 @@ class Policy:
             err.insert(0, "Invalid Policy configuration")
             raise RuntimeError(" \n".join(err))
 
-    def team_repo_perm(self, team: str, repo: str) -> Optional[Perm]:
+    def team_repo_perm(self, team: str, repo: str) -> Perm | None:
         """Return the permissions of a team to a repository, if any."""
         key = Policy.team_access_key(team, repo)
         if key in self._team_access:
@@ -401,7 +401,7 @@ class Policy:
         """Whether a repository is marked to be ignored in the policy."""
         return repo in self._repos_blacklist
 
-    def user_access(self, login: str, repo: str) -> Optional[Perm]:
+    def user_access(self, login: str, repo: str) -> Perm | None:
         """Return the direct permissions of a user to a repository, if any."""
         key = Policy.user_access_key(login, repo)
         if key in self._user_access:
@@ -719,9 +719,7 @@ def perm_higher(perm1: Perm, perm2: Perm) -> bool:
     return perm2 != "admin"
 
 
-def perm_highest(
-    perm1: Optional[Perm], perm2: Optional[Perm]
-) -> Optional[Perm]:
+def perm_highest(perm1: Perm | None, perm2: Perm | None) -> Perm | None:
     """Find the highest of two given permissions."""
     if not perm1 and not perm2:
         return None
@@ -740,7 +738,7 @@ def perm_highest(
 
 def team_repo_explicit_perm(
     conf: config.Config, policy: Policy, team_name: str, repo: schema.Repo
-) -> Optional[Perm]:
+) -> Perm | None:
     """Return the direct permissions of a team to a repository.
 
     Returns the permissions of a team as explicitly defined in the policy,
@@ -755,7 +753,7 @@ def team_repo_effective_perm(
     policy: Policy,
     conf_team: config.Team,
     repo: schema.Repo,
-) -> Optional[Perm]:
+) -> Perm | None:
     """Return the effective permissions of a team to a repository.
 
     Returns the effective permissions of a team, taking into account ancestors
@@ -771,7 +769,7 @@ def team_repo_effective_perm(
 
 def team_repo_perm(
     conf: config.Config, policy: Policy, team_name: str, repo: schema.Repo
-) -> Optional[Perm]:
+) -> Perm | None:
     """Optionally return the effective permissions of a team to a repository.
 
     Returns the effective permission of a team if the repository is part of the
@@ -790,7 +788,7 @@ def user_perm(
     usermap: user_map.UserMap,
     repo: schema.Repo,
     login: str,
-) -> Optional[Perm]:
+) -> Perm | None:
     """Return the effective permissions of a user to a repository.
 
     If the user is defined as an owner of the organisation, the effective

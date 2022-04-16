@@ -1,6 +1,6 @@
 """Compliance checks."""
 
-from typing import Optional
+from __future__ import annotations
 
 from ghaudit import cache, config, policy, schema, user_map
 
@@ -9,7 +9,7 @@ def error(msg: str) -> None:
     print("Error: {}".format(msg))
 
 
-def user_str(login: str, username: Optional[str], email: Optional[str]) -> str:
+def user_str(login: str, username: str | None, email: str | None) -> str:
     username_str = '("{}")'.format(username) if username else "(no username)"
     if email:
         return 'user "{}" {}, mapped as {}'.format(login, username_str, email)

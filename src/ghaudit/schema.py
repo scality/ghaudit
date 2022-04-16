@@ -13,12 +13,10 @@ from typing import (
     Literal,
     Mapping,
     MutableMapping,
-    Optional,
     Set,
+    TypedDict,
     cast,
 )
-
-from typing_extensions import TypedDict
 
 TeamRole = Literal["MEMBER", "MAINTAINER"]
 OrgRole = Literal["MEMBER", "ADMIN"]
@@ -73,7 +71,7 @@ class TeamNode(TypedDict):
     description: str
     repositories: TeamRepoEdges
     members: TeamMemberEdges
-    parentTeam: Optional[TeamRef]
+    parentTeam: TeamRef | None
     childTeams: ChildTeams
     slug: str
 
@@ -88,7 +86,7 @@ class TeamEdges(TypedDict):
 
 class UserNode(TypedDict):
     id: UserID
-    name: Optional[str]
+    name: str | None
     login: str
     email: str
     company: str
@@ -270,7 +268,7 @@ def user_by_login(rstate: Rstate, login: str) -> User | None:
 
 def _user_by_id_noexcept(
     rstate: Rstate, user_id: UserID
-) -> Optional[UserWithOrgRole]:
+) -> UserWithOrgRole | None:
     return rstate["data"]["users"].get(user_id)
 
 
@@ -385,7 +383,7 @@ def repo_branch_protection_rules(repo: Repo) -> List[BranchProtectionRuleNode]:
 
 def _repo_branch_protection_rules_noexcept(
     repo: Repo,
-) -> Optional[List[BranchProtectionRuleNode]]:
+) -> List[BranchProtectionRuleNode] | None:
     if "branchProtectionRules" in repo["node"]:
         return repo_branch_protection_rules(repo)
     return None
@@ -393,7 +391,7 @@ def _repo_branch_protection_rules_noexcept(
 
 def repo_branch_protection_rule(
     repo: Repo, pattern: str
-) -> Optional[BranchProtectionRuleNode]:
+) -> BranchProtectionRuleNode | None:
     """Return a branch protection rule given a branch name pattern."""
     rules = repo_branch_protection_rules(repo)
     elems = [x for x in rules if branch_protection_pattern(x) == pattern]
@@ -446,7 +444,7 @@ def team_members(rstate: Rstate, team: Team) -> List[UserWithRole]:
     return []
 
 
-def team_parent(rstate: Rstate, team: Team) -> Optional[Team]:
+def team_parent(rstate: Rstate, team: Team) -> Team | None:
     """Return the parent of a given team if it exists."""
     parent_team = team["node"]["parentTeam"]
     if parent_team:
@@ -469,7 +467,7 @@ def team_children(rstate: Rstate, team: Team) -> List[Team]:
 # user info
 
 
-def user_name(user: User) -> Optional[str]:
+def user_name(user: User) -> str | None:
     """Return the name of a given user."""
     return user["node"]["name"]
 

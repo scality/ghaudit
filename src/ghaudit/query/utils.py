@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 import sys
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import jinja2
 
 
 class PageInfo(TypedDict):
     hasNextPage: bool
-    endCursor: Optional[str]
+    endCursor: str | None
 
 
-def page_info_continue(page_infos: Optional[PageInfo]) -> bool:
+def page_info_continue(page_infos: PageInfo | None) -> bool:
     return not page_infos or page_infos["hasNextPage"]
 
 
