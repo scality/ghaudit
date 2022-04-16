@@ -12,13 +12,12 @@ from typing import (
     Literal,
     Mapping,
     NamedTuple,
-    Optional,
     Sequence,
     Tuple,
     Union,
 )
 
-DisplayMode = Literal["basic", "json", "table"]
+DisplayMode = Literal["basic", "extended", "json", "table"]
 # for some reason the "|" syntax was not accepted by mypy here. Tested with
 # mypy 0.931:
 ProgressItem = Union[
@@ -31,18 +30,44 @@ ProgressItem = Union[
 # the progress interface implemented by Progress
 ProgressCB = Callable[[Sequence[ProgressItem]], None]
 
+BULLET = "◆"
+
 
 class Formatter(NamedTuple):
     table_fields: Iterable[Tuple[str, int]]
-    to_fields: Callable[[Any], Iterable[Tuple[Optional[str], int]]]
+    to_fields: Callable[
+        [Any], Iterable[Tuple[str | Iterable[str] | None, int]]
+    ]
     to_string: Callable[[Any], str]
 
 
 def _print_list_basic(elems: Sequence[Any], fmt: Formatter) -> str:
     def format_entry(elem: Any) -> str:
-        return " ◆ {}".format(fmt.to_string(elem))
+        return " {} {}".format(BULLET, fmt.to_string(elem))
 
     return reduce(lambda x, y: x + format_entry(y) + "\n", elems, "")
+
+
+def _print_list_extended(elems: Sequence[Any], fmt: Formatter) -> str:
+    def format_field(
+        field: Tuple[Tuple[str, int], Tuple[str | Iterable[str] | None, int]]
+    ) -> str:
+        key, value = field
+        return "\n   {} {}: {}".format(BULLET, key[0], value[0])
+
+    def format_entry(
+        item: Any, values: Iterable[Tuple[str | Iterable[str] | None, int]]
+    ) -> str:
+        return reduce(
+            lambda x, y: x + format_field(y),
+            zip(fmt.table_fields, values),
+            " {} {}".format(BULLET, fmt.to_string(item)),
+        )
+
+    def format_item(acc_str: str, item: Any) -> str:
+        return acc_str + format_entry(item, fmt.to_fields(item)) + "\n"
+
+    return reduce(format_item, elems, "")
 
 
 def _print_list_table(elems: Sequence[Any], fmt: Formatter) -> str:
@@ -56,7 +81,9 @@ def _print_list_table(elems: Sequence[Any], fmt: Formatter) -> str:
             + "\n"
         )
 
-    def format_entry(values: Iterable[Tuple[Optional[str], int]]) -> str:
+    def format_entry(
+        values: Iterable[Tuple[str | Iterable[str] | None, int]]
+    ) -> str:
         return reduce(
             lambda x, y: x + str(y[0]).center(y[1]) + "│", values, "│"
         )
@@ -87,6 +114,7 @@ def _format_mode(mode: str) -> Callable[[Any, Formatter], str]:
         "basic": _print_list_basic,
         "json": _print_list_json,
         "table": _print_list_table,
+        "extended": _print_list_extended,
     }[mode]
 
 
@@ -102,8 +130,8 @@ def print_items(
     """Display a list of items.
 
     Display a list of items according to a mode and an object to string
-    formatter specification. Supported modes are json format, UTF-8 table, and
-    bullet list (`basic').
+    formatter specification. Supported modes are json format, UTF-8 table,
+    bullet list (`basic'), and extended (list with fields).
     """
     print(_format_items(mode, items, formatter))
 
