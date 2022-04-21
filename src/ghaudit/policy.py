@@ -16,6 +16,7 @@ from typing import (
     Mapping,
     MutableMapping,
     NewType,
+    Optional,
     Tuple,
     TypedDict,
     Union,
@@ -101,7 +102,9 @@ BPRMapping = MutableMapping[str, BPRMappingPattern]
 # mapping between a name and BPRModel
 BPRModelMapping = MutableMapping[str, BPRModel]
 
-TeamAccessMapping = MutableMapping[TeamAccessKey, Perm | None]
+# For some reasons, the newer Optional type annotation syntax is not supported
+# here, even using annotations from __future__
+TeamAccessMapping = MutableMapping[TeamAccessKey, Optional[Perm]]
 
 # see cmp_actor
 CmpActorDispatch = Mapping[
